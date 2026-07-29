@@ -7,9 +7,11 @@ __pycache__/
 # FastF1 & Neo4j database data / caches
 f1_cache/
 data/neo4j/
+data/*_cache/
 *.sqlite
 *.sqlite3
 *.db
+
 
 # Environment & local config
 .env

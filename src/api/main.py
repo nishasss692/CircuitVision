@@ -17,6 +17,7 @@ from src.api.paddock import router as paddock_router
 from src.api.predictor import router as predictor_router
 from src.api.chatbot import router as chatbot_router
 from src.api.routes.replay import router as replay_router
+from src.api.routes.pitwall import router as pitwall_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +44,7 @@ app.include_router(paddock_router)
 app.include_router(predictor_router)
 app.include_router(chatbot_router)
 app.include_router(replay_router)
+app.include_router(pitwall_router)
 
 # Enable FastF1 disk cache
 CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
