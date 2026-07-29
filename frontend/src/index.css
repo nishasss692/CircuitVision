@@ -1,0 +1,76 @@
+/* --- 2026 F1 Tactical Dashboard Styles --- */
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(18, 18, 22, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+body {
+  background-color: #0a0a0c;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(225, 6, 0, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(0, 240, 255, 0.06) 0%, transparent 45%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  color: #f0f0f5;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Glowing Neon Elements */
+.glow-red {
+  box-shadow: 0 0 20px rgba(225, 6, 0, 0.4);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #22222a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e10600;
+}
+
+/* Pulse animation for live indicators */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Range input accent styling */
+input[type="range"]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00f0ff;
+  box-shadow: 0 0 10px #00f0ff;
+  cursor: pointer;
+  appearance: none;
+}

@@ -1,0 +1,10 @@
+fastf1
+pandas
+numpy
+neo4j
+python-dotenv
+scikit-learn
+joblib
+fastapi
+uvicorn
+pydantic
