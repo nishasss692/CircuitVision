@@ -109,22 +109,31 @@ def simulate_season_to_round(as_of_round: int = 5) -> Dict[str, Any]:
             d_hist = driver_history[abbr]
             past_5 = d_hist[-5:]
             
-            rolling_pos = float(np.mean([p['pos'] for p in past_5])) if past_5 else float(d["base_grid"] * 1.2)
-            rolling_pts = float(np.mean([p['pts'] for p in past_5])) if past_5 else float(max(0, 15 - d["base_grid"] * 1.5))
+            # Teammate skill isolation
+            past_tm_gaps = [p.get('tm_gap', 0.0) for p in past_5]
+            tm_skill = float(np.mean(past_tm_gaps)) if past_tm_gaps else (1.5 - d["base_grid"] * 0.4)
+            is_rookie = 1 if abbr in ["ANT", "DOO", "BOR", "HAD"] and len(d_hist) < 3 else 0
+
+            rolling_pos = float(np.mean([p['pos'] for p in past_5])) if past_5 else float(d["base_grid"] * 1.1)
+            rolling_pts = float(np.mean([p['pts'] for p in past_5])) if past_5 else float(max(0, 15 - d["base_grid"] * 1.3))
             dnf_rate = float(np.mean([p['dnf'] for p in past_5])) if past_5 else 0.05
             
             # Grid position proxy for race r
-            grid_pos = float(max(1.0, min(20.0, d["base_grid"] + np.random.normal(0, 0.8))))
+            grid_pos = float(max(1.0, min(20.0, d["base_grid"] + np.random.normal(0, 0.7))))
+            car_pts_mean = float(max(0.0, 18.0 - d["base_grid"] * 1.2))
             pts_gap = float(max(0.0, leader_pts - driver_standings[abbr]))
             season_prog = float(round(r / float(total_rounds), 3))
             races_left = int(total_rounds - r + 1)
             
             feat_dict = {
                 "grid_position": grid_pos,
+                "teammate_skill_index": round(tm_skill, 2),
                 "driver_rolling_pos_mean": round(rolling_pos, 2),
                 "driver_rolling_pts_mean": round(rolling_pts, 2),
                 "reliability_dnf_rate": round(dnf_rate, 2),
                 "team_grid_mean": round(grid_pos, 2),
+                "car_rolling_pts_mean": round(car_pts_mean, 2),
+                "is_rookie": is_rookie,
                 "is_street_circuit": event_info["street"],
                 "is_high_downforce": event_info["high_downforce"],
                 "season_progress": season_prog,

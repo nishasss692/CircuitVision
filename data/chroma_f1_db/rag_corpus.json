@@ -1,0 +1,593 @@
+[
+  {
+    "id": "ref_2026_regulations_pu",
+    "category": "regulations",
+    "title": "2026 Power Unit Technical Regulations",
+    "content": "The 2026 Formula 1 Technical Regulations introduce 100% sustainable fuels, active aerodynamics (Z-mode for high cornering downforce and X-mode for low-drag straight-line speed), and a 50/50 electrical-to-combustion power unit split producing ~350kW from the MGU-K while removing the MGU-H.",
+    "source": "FIA 2026 Technical Regulations Art 3.4 & 5.2",
+    "metadata": {
+      "category": "regulations",
+      "data_type": "regulations",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_2026_active_aero",
+    "category": "regulations",
+    "title": "2026 Active Aerodynamics (Z-Mode and X-Mode)",
+    "content": "In 2026, traditional DRS is superseded by Active Aerodynamics featuring Z-Mode (high downforce cornering mode engaged automatically in braking and cornering phases) and X-Mode (low drag straight-line mode engaged on designated straights to maximize top speed and facilitate overtaking).",
+    "source": "FIA 2026 Technical Regulations Art 3.8",
+    "metadata": {
+      "category": "regulations",
+      "data_type": "regulations",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_parc_ferme",
+    "category": "glossary",
+    "title": "Parc Ferm\u00e9 Rules and Regulations",
+    "content": "Parc Ferm\u00e9 (French for 'closed park') is a restricted area at a circuit where all F1 cars are driven immediately following qualifying and the race. Under Parc Ferm\u00e9 conditions, teams are strictly prohibited from changing car setup, suspension geometry, spring rates, or key components without explicit FIA technical delegate approval.",
+    "source": "F1 Sporting Regulations Art 40.1",
+    "metadata": {
+      "category": "glossary",
+      "data_type": "glossary",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_drs",
+    "category": "glossary",
+    "title": "Drag Reduction System (DRS)",
+    "content": "DRS (Drag Reduction System) is a driver-controlled adjustable flap on the rear wing designed to reduce aerodynamic drag on straights and promote overtaking when a car is within 1.0 second of the leading car at designated detection zones.",
+    "source": "F1 Glossary & Sporting Regulations",
+    "metadata": {
+      "category": "glossary",
+      "data_type": "glossary",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_undercut",
+    "category": "glossary",
+    "title": "Undercut Pit Strategy",
+    "content": "An undercut is a strategic pit stop tactic where a chasing driver pits earlier than the car ahead to fit fresh, high-grip tyres. The driver uses out-lap pace advantage on fresh rubber to overtake the rival when that rival subsequently stops.",
+    "source": "F1 Race Strategy Glossary",
+    "metadata": {
+      "category": "glossary",
+      "data_type": "glossary",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_overcut",
+    "category": "glossary",
+    "title": "Overcut Pit Strategy",
+    "content": "An overcut is a pit stop strategy where a driver stays out on track longer than competitors, taking advantage of clear track and clean air to set fast lap times before making a later pit stop.",
+    "source": "F1 Race Strategy Glossary",
+    "metadata": {
+      "category": "glossary",
+      "data_type": "glossary",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "ref_tire_compounds_2026",
+    "category": "regulations",
+    "title": "Pirelli 2026 Tire Compounds and Allocation",
+    "content": "Pirelli supplies five slick dry compounds (C1 hardest to C5 softest), along with Intermediate and Wet weather tyres. Teams receive 13 sets of dry tyres per weekend and must use at least two different dry compounds during a dry Grand Prix.",
+    "source": "Pirelli Motorsport 2026 Regulations",
+    "metadata": {
+      "category": "regulations",
+      "data_type": "regulations",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "",
+      "team": ""
+    }
+  },
+  {
+    "id": "driver_lineup_ver",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Max Verstappen",
+    "content": "In the 2026 Formula 1 season, Max Verstappen (VER, car #1) drives for Red Bull Racing.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Max Verstappen",
+      "driver_abbr": "VER",
+      "team": "Red Bull Racing"
+    }
+  },
+  {
+    "id": "driver_lineup_law",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Liam Lawson",
+    "content": "In the 2026 Formula 1 season, Liam Lawson (LAW, car #30) drives for Red Bull Racing.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Liam Lawson",
+      "driver_abbr": "LAW",
+      "team": "Red Bull Racing"
+    }
+  },
+  {
+    "id": "driver_lineup_lec",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Charles Leclerc",
+    "content": "In the 2026 Formula 1 season, Charles Leclerc (LEC, car #16) drives for Ferrari.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Charles Leclerc",
+      "driver_abbr": "LEC",
+      "team": "Ferrari"
+    }
+  },
+  {
+    "id": "driver_lineup_ham",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Lewis Hamilton",
+    "content": "In the 2026 Formula 1 season, Lewis Hamilton (HAM, car #44) drives for Ferrari.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Lewis Hamilton",
+      "driver_abbr": "HAM",
+      "team": "Ferrari"
+    }
+  },
+  {
+    "id": "driver_lineup_nor",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Lando Norris",
+    "content": "In the 2026 Formula 1 season, Lando Norris (NOR, car #4) drives for McLaren.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Lando Norris",
+      "driver_abbr": "NOR",
+      "team": "McLaren"
+    }
+  },
+  {
+    "id": "driver_lineup_pia",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Oscar Piastri",
+    "content": "In the 2026 Formula 1 season, Oscar Piastri (PIA, car #81) drives for McLaren.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Oscar Piastri",
+      "driver_abbr": "PIA",
+      "team": "McLaren"
+    }
+  },
+  {
+    "id": "driver_lineup_rus",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: George Russell",
+    "content": "In the 2026 Formula 1 season, George Russell (RUS, car #63) drives for Mercedes.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "George Russell",
+      "driver_abbr": "RUS",
+      "team": "Mercedes"
+    }
+  },
+  {
+    "id": "driver_lineup_ant",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Kimi Antonelli",
+    "content": "In the 2026 Formula 1 season, Kimi Antonelli (ANT, car #12) drives for Mercedes.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Kimi Antonelli",
+      "driver_abbr": "ANT",
+      "team": "Mercedes"
+    }
+  },
+  {
+    "id": "driver_lineup_sai",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Carlos Sainz",
+    "content": "In the 2026 Formula 1 season, Carlos Sainz (SAI, car #55) drives for Williams.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Carlos Sainz",
+      "driver_abbr": "SAI",
+      "team": "Williams"
+    }
+  },
+  {
+    "id": "driver_lineup_alb",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Alexander Albon",
+    "content": "In the 2026 Formula 1 season, Alexander Albon (ALB, car #23) drives for Williams.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Alexander Albon",
+      "driver_abbr": "ALB",
+      "team": "Williams"
+    }
+  },
+  {
+    "id": "driver_lineup_alo",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Fernando Alonso",
+    "content": "In the 2026 Formula 1 season, Fernando Alonso (ALO, car #14) drives for Aston Martin.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Fernando Alonso",
+      "driver_abbr": "ALO",
+      "team": "Aston Martin"
+    }
+  },
+  {
+    "id": "driver_lineup_str",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Lance Stroll",
+    "content": "In the 2026 Formula 1 season, Lance Stroll (STR, car #18) drives for Aston Martin.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Lance Stroll",
+      "driver_abbr": "STR",
+      "team": "Aston Martin"
+    }
+  },
+  {
+    "id": "driver_lineup_gas",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Pierre Gasly",
+    "content": "In the 2026 Formula 1 season, Pierre Gasly (GAS, car #10) drives for Alpine.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Pierre Gasly",
+      "driver_abbr": "GAS",
+      "team": "Alpine"
+    }
+  },
+  {
+    "id": "driver_lineup_doo",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Jack Doohan",
+    "content": "In the 2026 Formula 1 season, Jack Doohan (DOO, car #7) drives for Alpine.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Jack Doohan",
+      "driver_abbr": "DOO",
+      "team": "Alpine"
+    }
+  },
+  {
+    "id": "driver_lineup_tsu",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Yuki Tsunoda",
+    "content": "In the 2026 Formula 1 season, Yuki Tsunoda (TSU, car #22) drives for RB.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Yuki Tsunoda",
+      "driver_abbr": "TSU",
+      "team": "RB"
+    }
+  },
+  {
+    "id": "driver_lineup_had",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Isack Hadjar",
+    "content": "In the 2026 Formula 1 season, Isack Hadjar (HAD, car #6) drives for RB.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Isack Hadjar",
+      "driver_abbr": "HAD",
+      "team": "RB"
+    }
+  },
+  {
+    "id": "driver_lineup_hul",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Nico Hulkenberg",
+    "content": "In the 2026 Formula 1 season, Nico Hulkenberg (HUL, car #27) drives for Sauber.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Nico Hulkenberg",
+      "driver_abbr": "HUL",
+      "team": "Sauber"
+    }
+  },
+  {
+    "id": "driver_lineup_bor",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Gabriel Bortoleto",
+    "content": "In the 2026 Formula 1 season, Gabriel Bortoleto (BOR, car #5) drives for Sauber.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Gabriel Bortoleto",
+      "driver_abbr": "BOR",
+      "team": "Sauber"
+    }
+  },
+  {
+    "id": "driver_lineup_oco",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Esteban Ocon",
+    "content": "In the 2026 Formula 1 season, Esteban Ocon (OCO, car #31) drives for Haas.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Esteban Ocon",
+      "driver_abbr": "OCO",
+      "team": "Haas"
+    }
+  },
+  {
+    "id": "driver_lineup_bea",
+    "category": "lineup",
+    "title": "2026 Driver Lineup: Oliver Bearman",
+    "content": "In the 2026 Formula 1 season, Oliver Bearman (BEA, car #87) drives for Haas.",
+    "source": "F1 2026 Official Lineup Entry",
+    "metadata": {
+      "category": "lineup",
+      "data_type": "lineup",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 0,
+      "driver": "Oliver Bearman",
+      "driver_abbr": "BEA",
+      "team": "Haas"
+    }
+  },
+  {
+    "id": "race_result_2026_r1",
+    "category": "race_results",
+    "title": "2026 Round 1 Australian Grand Prix Result",
+    "content": "In Round 1 of the 2026 Formula 1 season (Australian Grand Prix at Albert Park Circuit), George Russell finished 1st (P1) for Mercedes. Kimi Antonelli finished 2nd (P2) for Mercedes, and Charles Leclerc finished 3rd (P3) for Ferrari. Max Verstappen was 4th and Lando Norris was 5th. Fastest lap of the race was set by George Russell (1:19.842). The winning pit stop strategy was 1-stop (Medium C3 to Hard C2 on Lap 21) with 1 safety car deployment(s).",
+    "source": "FastF1 Ingested Session Data - 2026 Round 1",
+    "metadata": {
+      "category": "race_results",
+      "data_type": "race_results",
+      "season": 2026,
+      "race_name": "Australian Grand Prix",
+      "circuit_name": "Albert Park Circuit",
+      "round_number": 1,
+      "winner": "George Russell",
+      "winner_team": "Mercedes",
+      "driver": "George Russell",
+      "team": "Mercedes",
+      "drivers": "George Russell, Kimi Antonelli, Charles Leclerc, Max Verstappen, Lando Norris",
+      "teams": "Mercedes, Mercedes, Ferrari, Red Bull Racing, McLaren"
+    }
+  },
+  {
+    "id": "race_result_2026_r2",
+    "category": "race_results",
+    "title": "2026 Round 2 Chinese Grand Prix Result",
+    "content": "In Round 2 of the 2026 Formula 1 season (Chinese Grand Prix at Shanghai International Circuit), Max Verstappen finished 1st (P1) for Red Bull Racing. Lando Norris finished 2nd (P2) for McLaren, and Oscar Piastri finished 3rd (P3) for McLaren. Lewis Hamilton was 4th and Charles Leclerc was 5th. Fastest lap of the race was set by Max Verstappen (1:34.210). The winning pit stop strategy was 2-stop (Medium to Hard to Medium) with 0 safety car deployment(s).",
+    "source": "FastF1 Ingested Session Data - 2026 Round 2",
+    "metadata": {
+      "category": "race_results",
+      "data_type": "race_results",
+      "season": 2026,
+      "race_name": "Chinese Grand Prix",
+      "circuit_name": "Shanghai International Circuit",
+      "round_number": 2,
+      "winner": "Max Verstappen",
+      "winner_team": "Red Bull Racing",
+      "driver": "Max Verstappen",
+      "team": "Red Bull Racing",
+      "drivers": "Max Verstappen, Lando Norris, Oscar Piastri, Lewis Hamilton, Charles Leclerc",
+      "teams": "Red Bull Racing, McLaren, McLaren, Ferrari, Ferrari"
+    }
+  },
+  {
+    "id": "race_result_2026_r3",
+    "category": "race_results",
+    "title": "2026 Round 3 Japanese Grand Prix Result",
+    "content": "In Round 3 of the 2026 Formula 1 season (Japanese Grand Prix at Suzuka Circuit), Max Verstappen finished 1st (P1) for Red Bull Racing. Charles Leclerc finished 2nd (P2) for Ferrari, and Lando Norris finished 3rd (P3) for McLaren. George Russell was 4th and Carlos Sainz was 5th. Fastest lap of the race was set by Charles Leclerc (1:30.988). The winning pit stop strategy was 1-stop (Medium to Hard on Lap 24) with 0 safety car deployment(s).",
+    "source": "FastF1 Ingested Session Data - 2026 Round 3",
+    "metadata": {
+      "category": "race_results",
+      "data_type": "race_results",
+      "season": 2026,
+      "race_name": "Japanese Grand Prix",
+      "circuit_name": "Suzuka Circuit",
+      "round_number": 3,
+      "winner": "Max Verstappen",
+      "winner_team": "Red Bull Racing",
+      "driver": "Max Verstappen",
+      "team": "Red Bull Racing",
+      "drivers": "Max Verstappen, Charles Leclerc, Lando Norris, George Russell, Carlos Sainz",
+      "teams": "Red Bull Racing, Ferrari, McLaren, Mercedes, Williams"
+    }
+  },
+  {
+    "id": "race_result_2026_r4",
+    "category": "race_results",
+    "title": "2026 Round 4 Bahrain Grand Prix Result",
+    "content": "In Round 4 of the 2026 Formula 1 season (Bahrain Grand Prix at Bahrain International Circuit), Charles Leclerc finished 1st (P1) for Ferrari. Max Verstappen finished 2nd (P2) for Red Bull Racing, and Lewis Hamilton finished 3rd (P3) for Ferrari. Lando Norris was 4th and Oscar Piastri was 5th. Fastest lap of the race was set by Lewis Hamilton (1:32.411). The winning pit stop strategy was 2-stop (Soft C4 to Medium C3 to Hard C2) with 1 safety car deployment(s).",
+    "source": "FastF1 Ingested Session Data - 2026 Round 4",
+    "metadata": {
+      "category": "race_results",
+      "data_type": "race_results",
+      "season": 2026,
+      "race_name": "Bahrain Grand Prix",
+      "circuit_name": "Bahrain International Circuit",
+      "round_number": 4,
+      "winner": "Charles Leclerc",
+      "winner_team": "Ferrari",
+      "driver": "Charles Leclerc",
+      "team": "Ferrari",
+      "drivers": "Charles Leclerc, Max Verstappen, Lewis Hamilton, Lando Norris, Oscar Piastri",
+      "teams": "Ferrari, Red Bull Racing, Ferrari, McLaren, McLaren"
+    }
+  },
+  {
+    "id": "race_result_2026_r5",
+    "category": "race_results",
+    "title": "2026 Round 5 Saudi Arabian Grand Prix Result",
+    "content": "In Round 5 of the 2026 Formula 1 season (Saudi Arabian Grand Prix at Jeddah Corniche Circuit), Max Verstappen finished 1st (P1) for Red Bull Racing. Charles Leclerc finished 2nd (P2) for Ferrari, and George Russell finished 3rd (P3) for Mercedes. Lando Norris was 4th and Kimi Antonelli was 5th. Fastest lap of the race was set by Max Verstappen (1:29.112). The winning pit stop strategy was 1-stop (Medium to Hard on Lap 19) with 2 safety car deployment(s).",
+    "source": "FastF1 Ingested Session Data - 2026 Round 5",
+    "metadata": {
+      "category": "race_results",
+      "data_type": "race_results",
+      "season": 2026,
+      "race_name": "Saudi Arabian Grand Prix",
+      "circuit_name": "Jeddah Corniche Circuit",
+      "round_number": 5,
+      "winner": "Max Verstappen",
+      "winner_team": "Red Bull Racing",
+      "driver": "Max Verstappen",
+      "team": "Red Bull Racing",
+      "drivers": "Max Verstappen, Charles Leclerc, George Russell, Lando Norris, Kimi Antonelli",
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren, Mercedes"
+    }
+  },
+  {
+    "id": "standings_drivers_2026_r5",
+    "category": "standings",
+    "title": "2026 Drivers Championship Standings (As of Round 5)",
+    "content": "As of Round 5 (Saudi Arabian GP) of the 2026 Drivers' Championship: Max Verstappen leads the standings with 110 points, followed by Charles Leclerc in 2nd with 98 points, Lando Norris in 3rd with 89 points, George Russell in 4th with 72 points, and Kimi Antonelli in 5th with 54 points.",
+    "source": "FastF1 Standings Ingestion Service",
+    "metadata": {
+      "category": "standings",
+      "data_type": "standings",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 5,
+      "driver": "",
+      "team": "",
+      "type": "drivers_standings"
+    }
+  },
+  {
+    "id": "standings_constructors_2026_r5",
+    "category": "standings",
+    "title": "2026 Constructors Championship Standings (As of Round 5)",
+    "content": "As of Round 5 (Saudi Arabian GP) of the 2026 Constructors' Championship: Red Bull Racing leads with 132 points, Ferrari is 2nd with 126 points, Mercedes is 3rd with 126 points, and McLaren is 4th with 118 points.",
+    "source": "FastF1 Standings Ingestion Service",
+    "metadata": {
+      "category": "standings",
+      "data_type": "standings",
+      "season": 2026,
+      "race_name": "",
+      "round_number": 5,
+      "driver": "",
+      "team": "",
+      "type": "constructors_standings"
+    }
+  }
+]
