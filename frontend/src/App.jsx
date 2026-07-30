@@ -4,7 +4,6 @@ import {
   Activity,
   Shield,
   Trophy,
-  Cpu,
   MessageSquare,
   RefreshCw,
   Zap,
@@ -14,7 +13,6 @@ import {
 import RaceReplay2D from './components/RaceReplay2D';
 import PitwallScreen from './components/PitwallScreen';
 import WebPaddock from './components/WebPaddock';
-import ChampionshipPredictorView from './components/ChampionshipPredictorView';
 import RagChatbotView from './components/RagChatbotView';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -154,17 +152,7 @@ function App() {
           <span>WEB PADDOCK</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('PREDICTOR')}
-          className={`flex-1 min-w-[160px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-            activeTab === 'PREDICTOR'
-              ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <Cpu size={16} />
-          <span>PREDICTOR MODEL</span>
-        </button>
+
 
         <button
           onClick={() => setActiveTab('CHATBOT')}
@@ -201,9 +189,7 @@ function App() {
           <WebPaddock year={2026} />
         )}
 
-        {activeTab === 'PREDICTOR' && (
-          <ChampionshipPredictorView year={2026} roundNumber={selectedEventId} />
-        )}
+
 
         {activeTab === 'CHATBOT' && (
           <RagChatbotView year={2026} roundNumber={selectedEventId} />

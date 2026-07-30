@@ -102,3 +102,102 @@ def test_nonexistent_driver_query():
     data = response.json()
     assert data["unable_to_answer"] is True
 
+
+# --- GENERAL F1 KNOWLEDGE TESTS (no retrieval needed, should always answer) ---
+
+def test_general_what_is_drs():
+    """General terminology question - should answer from knowledge base, not refuse."""
+    response = client.post("/chat", json={"query": "What is DRS?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    assert "drag" in ans_lower or "overtaking" in ans_lower or "rear wing" in ans_lower
+
+def test_general_undercut_strategy():
+    """Pit strategy terminology question - should answer directly."""
+    response = client.post("/chat", json={"query": "What is an undercut in F1?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    assert "pit" in ans_lower or "tyre" in ans_lower or "tire" in ans_lower or "fresh" in ans_lower
+
+def test_general_parc_ferme():
+    """Regulations terminology question - should return parc ferme explanation."""
+    response = client.post("/chat", json={"query": "What is Parc Ferme?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    assert "parc" in ans_lower or "restricted" in ans_lower or "qualifying" in ans_lower or "ferme" in ans_lower
+
+def test_general_active_aero_x_mode():
+    """2026-specific regulation question - should explain X-Mode."""
+    response = client.post("/chat", json={"query": "Explain X-mode active aerodynamics"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    assert "drag" in ans_lower or "straight" in ans_lower or "speed" in ans_lower
+
+def test_general_overcut_strategy():
+    """Overcut terminology - should return an explanation."""
+    response = client.post("/chat", json={"query": "How does the overcut strategy work?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+
+def test_general_tyre_compounds():
+    """Tyre compound terminology - should return Pirelli explanation."""
+    response = client.post("/chat", json={"query": "What are the F1 tyre compounds?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    assert "pirelli" in ans_lower or "compound" in ans_lower or "soft" in ans_lower or "hard" in ans_lower
+
+
+# --- CONVERSATIONAL / META TESTS (bypass RAG entirely, should always answer) ---
+
+def test_conversational_hello():
+    """Simple greeting - should return a friendly response, not 'unable to answer'."""
+    response = client.post("/chat", json={"query": "Hello"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    assert len(data["answer"]) > 10
+
+def test_conversational_hi():
+    """Single-word greeting."""
+    response = client.post("/chat", json={"query": "hi"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+
+def test_conversational_what_can_you_do():
+    """Capability query - should list capabilities, not refuse."""
+    response = client.post("/chat", json={"query": "What can you do?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]
+    ans_lower = data["answer"].lower()
+    # Should mention at least some capabilities
+    assert any(kw in ans_lower for kw in ["race", "standings", "f1", "championship", "terminology"])
+
+def test_conversational_what_can_you_help():
+    """Help query - should respond with capabilities."""
+    response = client.post("/chat", json={"query": "What can you help me with?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert data["answer"]

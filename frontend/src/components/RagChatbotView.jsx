@@ -15,12 +15,17 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
   const [loading, setLoading] = useState(false);
 
   const suggestedQueries = [
-    "Who's leading the Drivers' Championship?",
     "Who won the Australian GP?",
-    "What is Active Aero X-Mode?",
-    "What is Parc Fermé?",
+    "Who leads the championship?",
+    "What is DRS?",
+    "What is an undercut?",
+    "Hi, what can you do?",
+    "What is Parc Ferme?",
     "Who won the 2026 Hungarian GP?"
   ];
+
+  // Track whether last response was grounded (for loading message)
+  const [lastWasGrounded, setLastWasGrounded] = useState(true);
 
   const sendQuery = async (queryText) => {
     if (!queryText.trim() || loading) return;
@@ -37,6 +42,7 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
         round_number: roundNumber
       });
 
+      setLastWasGrounded(res.data.is_grounded !== false);
       setMessages((prev) => [
         ...prev,
         {
@@ -160,7 +166,11 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
           <div className="flex justify-start">
             <div className="bg-gray-900/90 text-cyan-400 p-4 rounded-2xl border border-cyan-500/30 font-mono text-xs flex items-center gap-2">
               <Sparkles size={16} className="animate-spin" />
-              <span>SEARCHING CHROMADB VECTOR STORE & GROUNDING RESPONSE...</span>
+              <span>
+                {lastWasGrounded
+                  ? 'SEARCHING CHROMADB VECTOR STORE & GROUNDING RESPONSE...'
+                  : 'THINKING...'}
+              </span>
             </div>
           </div>
         )}
