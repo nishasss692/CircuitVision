@@ -5,13 +5,17 @@ import fastf1
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List, Optional
+from src.pipeline.session_loader import load_session, SessionIdentityError
+from src.pipeline.cache_utils import make_cache_path, validate_cache_payload
 
 logger = logging.getLogger("replay_precomputer")
 
 CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
 
 def get_event_cache_filepath(year: int, round_number: int) -> str:
-    return os.path.join(CACHE_DIR, f"precomputed_replay_{year}_{round_number}.json")
+    """Returns the canonical cache filepath for precomputed replay data."""
+    return make_cache_path(CACHE_DIR, year, round_number, "R", "precomputed_replay")
+
 
 def precompute_race_replay(year: int = 2026, round_number: int = 1, sample_interval_sec: float = 0.5) -> Dict[str, Any]:
     """
@@ -23,28 +27,50 @@ def precompute_race_replay(year: int = 2026, round_number: int = 1, sample_inter
     if os.path.exists(cache_path):
         try:
             with open(cache_path, "r") as f:
+                payload = json.load(f)
+            if validate_cache_payload(payload, year, round_number, cache_path):
                 logger.info(f"Loading cached precomputed replay for {year} Round {round_number} from disk.")
-                return json.load(f)
+                return payload
+            # validate_cache_payload already deleted stale file; fall through to recompute
         except Exception as e:
             logger.warning(f"Failed reading replay cache file {cache_path}: {e}")
 
     logger.info(f"Computing 2D replay telemetry payload for {year} Round {round_number}...")
     fastf1.Cache.enable_cache(CACHE_DIR)
-    
+
     session, is_fallback = None, False
     try:
-        session = fastf1.get_session(year, round_number, 'R')
-        session.load(laps=True, telemetry=True, weather=False)
+        session, is_fallback, _ = load_session(
+            year=year,
+            round_number=round_number,
+            session_type='R',
+            laps=True,
+            telemetry=True,
+            weather=False,
+        )
+    except SessionIdentityError:
+        raise
     except Exception as e:
         logger.warning(f"Could not load session {year} Round {round_number}: {e}. Falling back to 2025 Round {round_number}")
         try:
-            session = fastf1.get_session(2025, round_number, 'R')
-            session.load(laps=True, telemetry=True, weather=False)
-            is_fallback = True
+            session, is_fallback, _ = load_session(
+                year=2025,
+                round_number=round_number,
+                session_type='R',
+                laps=True,
+                telemetry=True,
+                weather=False,
+            )
         except Exception as e2:
-            session = fastf1.get_session(2025, 1, 'R')
-            session.load(laps=True, telemetry=True, weather=False)
-            is_fallback = True
+            session, is_fallback, _ = load_session(
+                year=2025,
+                round_number=1,
+                session_type='R',
+                laps=True,
+                telemetry=True,
+                weather=False,
+            )
+
 
     # 1. Track Outline Extraction (from overall fastest lap)
     track_outline = []

@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
+from src.pipeline.session_loader import load_session, SessionIdentityError
+from src.pipeline.cache_utils import make_cache_path, validate_cache_payload
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,29 +25,31 @@ os.makedirs(REPLAY_CACHE_DIR, exist_ok=True)
 
 router = APIRouter(tags=["2D Race Replay Module"])
 
+
 def get_replay_cache_path(year: int, round_no: int, cache_type: str) -> str:
-    return os.path.join(REPLAY_CACHE_DIR, f"{year}_round_{round_no}_{cache_type}.json")
+    """Returns the canonical cache file path for replay/leaderboard data."""
+    # Session type is always 'R' for replay
+    return make_cache_path(REPLAY_CACHE_DIR, year, round_no, "R", cache_type)
+
 
 def load_session_for_replay(year: int = 2026, round_no: int = 1):
-    """Loads FastF1 race session. If requested 2026/future session has no telemetry, falls back to historical session."""
-    session_type = 'R'
+    """Loads FastF1 race session using the canonical shared loader with identity validation."""
     try:
-        session = fastf1.get_session(year, round_no, session_type)
-        session.load(laps=True, telemetry=True, weather=False)
-        if hasattr(session, 'pos_data') and session.pos_data:
-            return session, year, False
-        raise ValueError("No position telemetry in session")
+        session, is_fallback, fallback_yr = load_session(
+            year=year,
+            round_number=round_no,
+            session_type='R',
+            laps=True,
+            telemetry=True,
+            weather=False,
+        )
+        actual_year = fallback_yr if is_fallback else year
+        return session, actual_year, is_fallback
+    except SessionIdentityError:
+        raise
     except Exception as e:
-        logger.warning(f"Could not load 2026 session {year} R{round_no}: {e}. Fallback to historical session...")
-        try:
-            fb_session = fastf1.get_session(2024, round_no, session_type)
-            fb_session.load(laps=True, telemetry=True, weather=False)
-            return fb_session, 2024, True
-        except Exception as fb_err:
-            logger.warning(f"Fallback 1 failed: {fb_err}. Fallback to 2024 Round 1...")
-            fb_session2 = fastf1.get_session(2024, 1, session_type)
-            fb_session2.load(laps=True, telemetry=True, weather=False)
-            return fb_session2, 2024, True
+        raise RuntimeError(f"Failed to load replay session {year} R{round_no}: {e}") from e
+
 
 def build_event_metadata(session, year: int, round_no: int, is_fallback: bool) -> Dict[str, Any]:
     event_info = session.event if hasattr(session, 'event') else {}
@@ -66,11 +70,18 @@ def process_replay_and_leaderboard(year: int, round_no: int):
     leaderboard_file = get_replay_cache_path(year, round_no, "leaderboard")
 
     if os.path.exists(replay_file) and os.path.exists(leaderboard_file):
-        with open(replay_file, "r") as f:
-            replay_data = json.load(f)
-        with open(leaderboard_file, "r") as f:
-            leaderboard_data = json.load(f)
-        return replay_data, leaderboard_data
+        try:
+            with open(replay_file, "r") as f:
+                replay_data = json.load(f)
+            with open(leaderboard_file, "r") as f:
+                leaderboard_data = json.load(f)
+            # Stale-cache detection: verify stored identity matches the request
+            if validate_cache_payload(replay_data, year, round_no, replay_file) and \
+               validate_cache_payload(leaderboard_data, year, round_no, leaderboard_file):
+                return replay_data, leaderboard_data
+            # validate_cache_payload already deleted the stale file(s); fall through to recompute
+        except Exception as cache_err:
+            logger.warning(f"Cache read error for {year} R{round_no}: {cache_err}. Recomputing.")
 
     session, loaded_year, is_fallback = load_session_for_replay(year, round_no)
     event_meta = build_event_metadata(session, year, round_no, is_fallback)
@@ -84,8 +95,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             team_name = str(row['TeamName']) if pd.notna(row['TeamName']) else "F1 Team"
             raw_color = str(row['TeamColor']) if pd.notna(row['TeamColor']) else ""
             team_color = f"#{raw_color}" if raw_color and raw_color != "nan" and raw_color.strip() else "#00f0ff"
-            grid_pos = int(row['GridPosition']) if pd.notna(row['GridPosition']) else 20
-            final_pos = int(row['Position']) if pd.notna(row['Position']) else 20
+            grid_pos = int(row['GridPosition']) if pd.notna(row['GridPosition']) and int(row['GridPosition']) > 0 else 20
+            final_pos = int(row['Position']) if pd.notna(row['Position']) and int(row['Position']) > 0 else 20
             full_name = str(row['FullName']) if pd.notna(row['FullName']) else d_abbr
 
             driver_metadata[d_abbr] = {
@@ -116,7 +127,7 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             for _, row in sample_df.iterrows():
                 track_outline.append({"x": round(float(row['X']), 1), "y": round(float(row['Y']), 1)})
 
-    # 3. Process Telemetry & Resample onto Common Time Axis
+    # 3. Process Telemetry & Resample onto Common Absolute Session-Time Axis
     num_to_abbr = {meta['driver_number']: abbr for abbr, meta in driver_metadata.items()}
 
     min_t = float('inf')
@@ -128,8 +139,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
         for d_num, pos_df in session.pos_data.items():
             if pos_df is None or pos_df.empty:
                 continue
-            pos_df = pos_df.dropna(subset=['X', 'Y', 'SessionTime']).copy()
-            if pos_df.empty:
+            pos_df = pos_df.dropna(subset=['X', 'Y', 'SessionTime']).sort_values('SessionTime').copy()
+            if pos_df.empty or len(pos_df) < 2:
                 continue
             
             pos_df['SessionTimeSec'] = pos_df['SessionTime'].dt.total_seconds()
@@ -143,8 +154,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
         for d_num, car_df in session.car_data.items():
             if car_df is None or car_df.empty:
                 continue
-            car_df = car_df.dropna(subset=['SessionTime']).copy()
-            if car_df.empty:
+            car_df = car_df.dropna(subset=['SessionTime']).sort_values('SessionTime').copy()
+            if car_df.empty or len(car_df) < 2:
                 continue
             car_df['SessionTimeSec'] = car_df['SessionTime'].dt.total_seconds()
             abbr = num_to_abbr.get(str(d_num), str(d_num))
@@ -153,9 +164,10 @@ def process_replay_and_leaderboard(year: int, round_no: int):
     if min_t == float('inf') or max_t == float('-inf'):
         min_t, max_t = 0.0, 100.0
 
-    # Fixed sampling interval dt = 0.5s session time
+    # Fixed sampling interval dt = 0.5s absolute session time
     dt = 0.5
     time_grid = np.arange(min_t, max_t, dt)
+    MAX_TELEMETRY_GAP_SEC = 3.0  # Gaps > 3.0s (pit stops, red flags, DNFs) are not interpolated across
 
     resampled_drivers = {}
     for abbr, pos_df in driver_pos_map.items():
@@ -163,10 +175,23 @@ def process_replay_and_leaderboard(year: int, round_no: int):
         x_vals = pos_df['X'].values
         y_vals = pos_df['Y'].values
 
-        interp_x = np.interp(time_grid, t_sec, x_vals)
-        interp_y = np.interp(time_grid, t_sec, y_vals)
+        idx_right = np.searchsorted(t_sec, time_grid, side='right')
+        idx_left = np.clip(idx_right - 1, 0, len(t_sec) - 1)
+        idx_right = np.clip(idx_right, 0, len(t_sec) - 1)
 
-        # Compute velocity gradient for car heading angle (radians)
+        t_left = t_sec[idx_left]
+        t_right = t_sec[idx_right]
+        t_gap = t_right - t_left
+
+        available_mask = (time_grid >= t_sec.min()) & (time_grid <= t_sec.max()) & (t_gap <= MAX_TELEMETRY_GAP_SEC)
+
+        denom = np.where(t_gap > 0, t_gap, 1.0)
+        alpha = np.where(t_gap > 0, (time_grid - t_left) / denom, 0.0)
+        alpha = np.clip(alpha, 0.0, 1.0)
+
+        interp_x = x_vals[idx_left] + alpha * (x_vals[idx_right] - x_vals[idx_left])
+        interp_y = y_vals[idx_left] + alpha * (y_vals[idx_right] - y_vals[idx_left])
+
         dx = np.gradient(interp_x)
         dy = np.gradient(interp_y)
         heading_vals = np.arctan2(dy, dx)
@@ -174,11 +199,30 @@ def process_replay_and_leaderboard(year: int, round_no: int):
         if abbr in driver_car_map:
             car_df = driver_car_map[abbr]
             car_t = car_df['SessionTimeSec'].values
-            interp_speed = np.interp(time_grid, car_t, car_df['Speed'].values if 'Speed' in car_df else np.zeros(len(car_t)))
-            interp_gear = np.interp(time_grid, car_t, car_df['nGear'].values if 'nGear' in car_df else np.zeros(len(car_t)))
-            interp_drs = np.interp(time_grid, car_t, car_df['DRS'].values if 'DRS' in car_df else np.zeros(len(car_t)))
-            interp_throttle = np.interp(time_grid, car_t, car_df['Throttle'].values if 'Throttle' in car_df else np.zeros(len(car_t)))
-            interp_brake = np.interp(time_grid, car_t, car_df['Brake'].values if 'Brake' in car_df else np.zeros(len(car_t)))
+            
+            c_idx_right = np.searchsorted(car_t, time_grid, side='right')
+            c_idx_left = np.clip(c_idx_right - 1, 0, len(car_t) - 1)
+            c_idx_right = np.clip(c_idx_right, 0, len(car_t) - 1)
+
+            ct_left = car_t[c_idx_left]
+            ct_right = car_t[c_idx_right]
+            ct_gap = ct_right - ct_left
+
+            c_denom = np.where(ct_gap > 0, ct_gap, 1.0)
+            c_alpha = np.where(ct_gap > 0, (time_grid - ct_left) / c_denom, 0.0)
+            c_alpha = np.clip(c_alpha, 0.0, 1.0)
+
+            speeds = car_df['Speed'].astype(float).values if 'Speed' in car_df else np.zeros(len(car_t))
+            gears = car_df['nGear'].astype(float).values if 'nGear' in car_df else np.zeros(len(car_t))
+            drs_vals = car_df['DRS'].astype(float).values if 'DRS' in car_df else np.zeros(len(car_t))
+            throttles = car_df['Throttle'].astype(float).values if 'Throttle' in car_df else np.zeros(len(car_t))
+            brakes = car_df['Brake'].astype(float).values if 'Brake' in car_df else np.zeros(len(car_t))
+
+            interp_speed = speeds[c_idx_left] + c_alpha * (speeds[c_idx_right] - speeds[c_idx_left])
+            interp_gear = gears[c_idx_left] + c_alpha * (gears[c_idx_right] - gears[c_idx_left])
+            interp_drs = drs_vals[c_idx_left] + c_alpha * (drs_vals[c_idx_right] - drs_vals[c_idx_left])
+            interp_throttle = throttles[c_idx_left] + c_alpha * (throttles[c_idx_right] - throttles[c_idx_left])
+            interp_brake = brakes[c_idx_left] + c_alpha * (brakes[c_idx_right] - brakes[c_idx_left])
         else:
             interp_speed = np.zeros(len(time_grid))
             interp_gear = np.zeros(len(time_grid))
@@ -195,15 +239,17 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             "drs": interp_drs,
             "throttle": interp_throttle,
             "brake": interp_brake,
+            "available": available_mask,
             "min_t": t_sec.min(),
             "max_t": t_sec.max()
         }
 
-    # 4. Pre-calculate Lap Fast Lookups (vectorized)
+    # 4. Pre-calculate Lap Fast Lookups & Pit Stop Time Windows
     driver_lap_lookup = {}
+    driver_pit_windows = {}
     if hasattr(session, 'laps') and session.laps is not None and not session.laps.empty:
-        laps_df = session.laps.dropna(subset=['LapStartTime', 'Time', 'LapNumber']).copy()
-        if not laps_df.empty:
+        laps_df = session.laps.copy()
+        if 'LapStartTime' in laps_df and 'Time' in laps_df:
             laps_df['StartTimeSec'] = laps_df['LapStartTime'].dt.total_seconds()
             laps_df['EndTimeSec'] = laps_df['Time'].dt.total_seconds()
             laps_df['DurationSec'] = laps_df['LapTime'].dt.total_seconds()
@@ -211,23 +257,38 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             for abbr in driver_metadata.keys():
                 d_laps = laps_df[laps_df['Driver'] == abbr].sort_values('LapNumber')
                 if not d_laps.empty:
-                    driver_lap_lookup[abbr] = {
-                        "starts": d_laps['StartTimeSec'].values,
-                        "ends": d_laps['EndTimeSec'].values,
-                        "durs": d_laps['DurationSec'].values,
-                        "numbers": d_laps['LapNumber'].values.astype(int),
-                        "min_start": d_laps['StartTimeSec'].min(),
-                        "max_end": d_laps['EndTimeSec'].max(),
-                        "max_lap": int(d_laps['LapNumber'].max())
-                    }
+                    valid_laps = d_laps.dropna(subset=['LapStartTime', 'Time', 'LapNumber'])
+                    if not valid_laps.empty:
+                        driver_lap_lookup[abbr] = {
+                            "starts": valid_laps['StartTimeSec'].values,
+                            "ends": valid_laps['EndTimeSec'].values,
+                            "durs": valid_laps['DurationSec'].values,
+                            "numbers": valid_laps['LapNumber'].values.astype(int),
+                            "min_start": valid_laps['StartTimeSec'].min(),
+                            "max_end": valid_laps['EndTimeSec'].max(),
+                            "max_lap": int(valid_laps['LapNumber'].max())
+                        }
 
-    # Sample time steps: cap at ~2000 points max for smooth animation & fast payload
+                    # Extract pit stop time windows for this driver
+                    pit_windows = []
+                    for _, lap_row in d_laps.iterrows():
+                        pit_in_t = lap_row['PitInTime'].total_seconds() if pd.notna(lap_row.get('PitInTime')) and hasattr(lap_row['PitInTime'], 'total_seconds') else None
+                        pit_out_t = lap_row['PitOutTime'].total_seconds() if pd.notna(lap_row.get('PitOutTime')) and hasattr(lap_row['PitOutTime'], 'total_seconds') else None
+
+                        if pit_in_t is not None or pit_out_t is not None:
+                            start_p = pit_in_t if pit_in_t is not None else (pit_out_t - 25.0)
+                            end_p = pit_out_t if pit_out_t is not None else (pit_in_t + 25.0)
+                            pit_windows.append((start_p, end_p))
+                    driver_pit_windows[abbr] = pit_windows
+
+    # Sample time steps: cap at ~2500 points max for smooth animation & fast payload
     step_stride = 1
     if len(time_grid) > 2500:
         step_stride = int(np.ceil(len(time_grid) / 2000.0))
 
     sampled_time_grid = time_grid[::step_stride]
     normalized_timestamps = (sampled_time_grid - min_t).round(2).tolist()
+    effective_dt = round(float(dt * step_stride), 3)
 
     replay_frames = []
     leaderboard_frames = []
@@ -241,7 +302,7 @@ def process_replay_and_leaderboard(year: int, round_no: int):
         for abbr, meta in driver_metadata.items():
             if abbr in resampled_drivers:
                 d_res = resampled_drivers[abbr]
-                if abs_t < d_res['min_t'] - 10 or abs_t > d_res['max_t'] + 10:
+                if not d_res['available'][grid_idx]:
                     continue
                 
                 cx = round(float(d_res['x'][grid_idx]), 1)
@@ -256,10 +317,21 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             else:
                 continue
 
+            # Check if car is currently in pit lane
+            is_in_pit = False
+            if abbr in driver_pit_windows:
+                for p_start, p_end in driver_pit_windows[abbr]:
+                    if p_start <= abs_t <= p_end:
+                        is_in_pit = True
+                        break
+
             # Fast lap calculation using numpy binary search
             lap_num = 1
             progress = 0.0
             lap_dur = 85.0
+            
+            min_race_start_t = min((l["min_start"] for l in driver_lap_lookup.values()), default=min_t)
+
             if abbr in driver_lap_lookup:
                 lookup = driver_lap_lookup[abbr]
                 if abs_t < lookup["min_start"]:
@@ -282,6 +354,14 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                     else:
                         lap_num = lookup["max_lap"]
                         progress = float(lap_num)
+            else:
+                grid_p = meta.get('grid_position', 20)
+                final_p = meta.get('final_position', 20)
+                if abs_t < min_race_start_t:
+                    progress = -(grid_p / 100.0)
+                else:
+                    progress = 1.0 - (final_p / 100.0)
+                lap_num = 1
 
             driver_progress_list.append({
                 "driver": abbr,
@@ -297,7 +377,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                 "brake": brake,
                 "lap": lap_num,
                 "lap_dur": lap_dur,
-                "progress": progress
+                "progress": progress,
+                "in_pit": is_in_pit
             })
 
         # Sort drivers by race progress descending to get position
@@ -332,7 +413,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                 "throttle": d_item['throttle'],
                 "brake": d_item['brake'],
                 "lap": d_item['lap'],
-                "position": pos
+                "position": pos,
+                "in_pit": d_item['in_pit']
             })
 
             frame_leaderboard.append({
@@ -344,7 +426,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                 "gap_to_leader": gap_str,
                 "speed": d_item['speed'],
                 "gear": d_item['gear'],
-                "drs": d_item['drs']
+                "drs": d_item['drs'],
+                "in_pit": d_item['in_pit']
             })
 
         replay_frames.append({
@@ -359,6 +442,7 @@ def process_replay_and_leaderboard(year: int, round_no: int):
 
     replay_payload = {
         "event": event_meta,
+        "sample_interval": effective_dt,
         "track_outline": track_outline,
         "driver_metadata": driver_metadata,
         "timestamps": normalized_timestamps,
@@ -368,6 +452,7 @@ def process_replay_and_leaderboard(year: int, round_no: int):
 
     leaderboard_payload = {
         "event": event_meta,
+        "sample_interval": effective_dt,
         "timestamps": normalized_timestamps,
         "total_frames": len(leaderboard_frames),
         "frames": leaderboard_frames

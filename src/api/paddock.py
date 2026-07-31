@@ -6,6 +6,7 @@ import fastf1
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
+from src.pipeline.session_loader import load_session, SessionIdentityError
 
 logger = logging.getLogger("f1_paddock")
 router = APIRouter(tags=["Web Paddock Module"])
@@ -18,11 +19,12 @@ fastf1.Cache.enable_cache(CACHE_DIR)
 PADDOCK_CACHE_DIR = os.path.join(os.getcwd(), "data", "paddock_cache")
 os.makedirs(PADDOCK_CACHE_DIR, exist_ok=True)
 
+
 def pd_not_null(val):
     return pd.notna(val) and val is not None and str(val).strip() != "" and str(val) != "nan"
 
 def load_completed_race_results(year: int = 2026) -> List[Dict[str, Any]]:
-    """Ingests completed race sessions for the given year."""
+    """Ingests completed race sessions for the given year using canonical session loader with identity validation."""
     completed_races = []
     try:
         schedule = fastf1.get_event_schedule(year)
@@ -42,12 +44,26 @@ def load_completed_race_results(year: int = 2026) -> List[Dict[str, Any]]:
                 break
 
             try:
-                session = fastf1.get_session(year, round_no, 'R')
-                # Load minimal results fast
-                session.load(laps=False, telemetry=False, weather=False)
+                # Use canonical shared loader — validates identity after load
+                session, _, _ = load_session(
+                    year=year,
+                    round_number=round_no,
+                    session_type='R',
+                    laps=False,
+                    telemetry=False,
+                    weather=False,
+                )
 
                 if hasattr(session, 'results') and session.results is not None and not session.results.empty:
                     if 'Position' in session.results and session.results['Position'].dropna().count() > 0:
+                        # Double-check: actual round number from session must match schedule row
+                        actual_round = int(session.event.get("RoundNumber", round_no))
+                        if actual_round != round_no:
+                            logger.error(
+                                f"Paddock identity mismatch for {year} R{round_no}: "
+                                f"session reports R{actual_round}. Skipping."
+                            )
+                            continue
                         completed_races.append({
                             "round_number": round_no,
                             "event_name": str(row.get("EventName", f"Round {round_no}")),
@@ -55,6 +71,9 @@ def load_completed_race_results(year: int = 2026) -> List[Dict[str, Any]]:
                             "event_date": event_date,
                             "results": session.results
                         })
+            except SessionIdentityError as sid_err:
+                logger.error(f"Session identity error for {year} R{round_no}: {sid_err}. Skipping round.")
+                continue
             except Exception as s_err:
                 logger.debug(f"Session load note for {year} Round {round_no}: {s_err}")
                 # If a round cannot be loaded, break to avoid delaying API
@@ -65,9 +84,11 @@ def load_completed_race_results(year: int = 2026) -> List[Dict[str, Any]]:
 
     return completed_races
 
+
 def compute_paddock_aggregates(year: int = 2026):
     """Computes driver stats, constructor stats, and standings from ingested race sessions, cached to disk."""
-    cache_file = os.path.join(PADDOCK_CACHE_DIR, f"{year}_paddock_aggregates.json")
+    # v2 suffix ensures old (potentially mismatched) cache files are not picked up
+    cache_file = os.path.join(PADDOCK_CACHE_DIR, f"{year}_paddock_aggregates_v2.json")
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r") as f:

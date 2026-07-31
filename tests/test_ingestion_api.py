@@ -37,7 +37,11 @@ def run_tests():
     assert "event_name" in data
     assert "drivers_count" in data
     assert data["drivers_count"] > 0
-    logger.info(f"✅ Session Summary passed: {data['event_name']} ({data['drivers_count']} drivers loaded). Fallback flag: {data['is_fallback_data']}")
+    # Identity check: actual round must match the requested round
+    actual_round = data.get("actual_round_number", data.get("round_number"))
+    assert actual_round == 1, f"Identity mismatch: requested R1 but got R{actual_round}"
+    logger.info(f"✅ Session Summary passed: {data['event_name']} ({data['drivers_count']} drivers loaded). "
+                f"Actual round: R{actual_round}. Fallback: {data['is_fallback_data']}")
 
     logger.info("Testing 4: Session Laps Endpoint ('/api/session/2026/1/laps')")
     response = client.get("/api/session/2026/1/laps?driver=NOR")
@@ -48,7 +52,10 @@ def run_tests():
     sample_lap = data["laps"][0]
     assert "lap_number" in sample_lap
     assert "compound" in sample_lap
-    logger.info(f"✅ Session Laps passed for driver NOR. Laps returned: {len(data['laps'])}.")
+    # Identity check
+    actual_round = data.get("actual_round_number", data.get("round_number"))
+    assert actual_round == 1, f"Laps identity mismatch: requested R1 but got R{actual_round}"
+    logger.info(f"✅ Session Laps passed for driver NOR. Laps returned: {len(data['laps'])}. Actual round: R{actual_round}.")
 
     logger.info("Testing 5: Telemetry Coordinates Endpoint ('/api/session/2026/1/telemetry')")
     response = client.get("/api/session/2026/1/telemetry?driver=NOR&lap_number=1")
@@ -61,7 +68,10 @@ def run_tests():
     assert "y" in sample_tel
     assert "speed" in sample_tel
     assert "gear" in sample_tel
-    logger.info(f"✅ Telemetry coordinates passed. Data points for lap 1: {len(data['telemetry'])}.")
+    # Identity check
+    actual_round = data.get("actual_round_number", data.get("round_number"))
+    assert actual_round == 1, f"Telemetry identity mismatch: requested R1 but got R{actual_round}"
+    logger.info(f"✅ Telemetry coordinates passed. Data points for lap 1: {len(data['telemetry'])}. Actual round: R{actual_round}.")
 
     logger.info("Testing 6: Pitwall Leaderboard Endpoint ('/api/session/2026/1/pitwall')")
     response = client.get("/api/session/2026/1/pitwall")
@@ -69,8 +79,12 @@ def run_tests():
     data = response.json()
     assert "leaderboard" in data
     assert len(data["leaderboard"]) > 0
+    # Identity check
+    actual_round = data.get("actual_round_number", data.get("round_number"))
+    assert actual_round == 1, f"Pitwall identity mismatch: requested R1 but got R{actual_round}"
     leader = data["leaderboard"][0]
-    logger.info(f"✅ Pitwall Leaderboard passed. P1 driver: {leader['driver']} ({leader['team_name']}).")
+    logger.info(f"✅ Pitwall Leaderboard passed. P1 driver: {leader['driver']} ({leader['team_name']}). Actual round: R{actual_round}.")
+
 
     logger.info("Testing 7: Web Paddock Standings Endpoint ('/api/paddock/standings/2026')")
     response = client.get("/api/paddock/standings/2026")

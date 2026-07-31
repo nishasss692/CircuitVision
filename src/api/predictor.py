@@ -49,31 +49,32 @@ DRIVERS_2026 = [
 ]
 
 CALENDAR_2026 = [
-    {"round": 1, "name": "Australian Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 2, "name": "Chinese Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 3, "name": "Japanese Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 4, "name": "Bahrain Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 5, "name": "Saudi Arabian Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 6, "name": "Miami Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 7, "name": "Emilia Romagna Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 8, "name": "Monaco Grand Prix", "street": 1, "high_downforce": 1},
-    {"round": 9, "name": "Spanish Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 10, "name": "Canadian Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 11, "name": "Austrian Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 12, "name": "British Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 13, "name": "Hungarian Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 14, "name": "Belgian Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 15, "name": "Dutch Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 16, "name": "Italian Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 17, "name": "Azerbaijan Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 18, "name": "Singapore Grand Prix", "street": 1, "high_downforce": 1},
-    {"round": 19, "name": "United States Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 20, "name": "Mexico City Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 21, "name": "São Paulo Grand Prix", "street": 0, "high_downforce": 0},
-    {"round": 22, "name": "Las Vegas Grand Prix", "street": 1, "high_downforce": 0},
-    {"round": 23, "name": "Qatar Grand Prix", "street": 0, "high_downforce": 1},
-    {"round": 24, "name": "Abu Dhabi Grand Prix", "street": 0, "high_downforce": 0},
+    # Round : FastF1 RoundNumber : EventName               : street : high_downforce
+    {"round": 1,  "name": "Australian Grand Prix",   "street": 0, "high_downforce": 0},
+    {"round": 2,  "name": "Chinese Grand Prix",      "street": 0, "high_downforce": 0},
+    {"round": 3,  "name": "Japanese Grand Prix",     "street": 0, "high_downforce": 1},
+    {"round": 4,  "name": "Miami Grand Prix",        "street": 1, "high_downforce": 0},
+    {"round": 5,  "name": "Canadian Grand Prix",     "street": 1, "high_downforce": 0},
+    {"round": 6,  "name": "Monaco Grand Prix",       "street": 1, "high_downforce": 1},
+    {"round": 7,  "name": "Barcelona Grand Prix",    "street": 0, "high_downforce": 1},
+    {"round": 8,  "name": "Austrian Grand Prix",     "street": 0, "high_downforce": 0},
+    {"round": 9,  "name": "British Grand Prix",      "street": 0, "high_downforce": 1},
+    {"round": 10, "name": "Belgian Grand Prix",      "street": 0, "high_downforce": 0},
+    {"round": 11, "name": "Hungarian Grand Prix",    "street": 0, "high_downforce": 1},
+    {"round": 12, "name": "Dutch Grand Prix",        "street": 0, "high_downforce": 1},
+    {"round": 13, "name": "Italian Grand Prix",      "street": 0, "high_downforce": 0},
+    {"round": 14, "name": "Spanish Grand Prix",      "street": 0, "high_downforce": 1},
+    {"round": 15, "name": "Azerbaijan Grand Prix",   "street": 1, "high_downforce": 0},
+    {"round": 16, "name": "Bahrain Grand Prix",      "street": 0, "high_downforce": 0},
+    {"round": 17, "name": "Singapore Grand Prix",    "street": 1, "high_downforce": 1},
+    {"round": 18, "name": "United States Grand Prix","street": 0, "high_downforce": 1},
+    {"round": 19, "name": "Mexico City Grand Prix",  "street": 0, "high_downforce": 1},
+    {"round": 20, "name": "São Paulo Grand Prix",    "street": 0, "high_downforce": 0},
+    {"round": 21, "name": "Las Vegas Grand Prix",    "street": 1, "high_downforce": 0},
+    {"round": 22, "name": "Qatar Grand Prix",        "street": 0, "high_downforce": 1},
+    {"round": 23, "name": "Abu Dhabi Grand Prix",    "street": 0, "high_downforce": 0},
 ]
+
 
 F1_POINTS_SYSTEM = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 
@@ -82,8 +83,8 @@ def simulate_season_to_round(as_of_round: int = 5) -> Dict[str, Any]:
     Simulates season results up to `as_of_round` using strict anti-leakage features,
     and runs Monte Carlo simulations for remaining races.
     """
-    as_of_round = max(1, min(24, as_of_round))
-    total_rounds = 24
+    as_of_round = max(1, min(23, as_of_round))
+    total_rounds = 23
     
     model_artifact = get_model_artifact()
     win_model = model_artifact.get("win_model") if model_artifact else None
@@ -243,7 +244,7 @@ def simulate_season_to_round(as_of_round: int = 5) -> Dict[str, Any]:
                         "championship_probability": prob
                     })
 
-    next_race_info = CALENDAR_2026[min(23, as_of_round - 1)]
+    next_race_info = CALENDAR_2026[min(22, as_of_round - 1)]
 
     return {
         "data_cutoff": f"As of 2026 Round {as_of_round} ({CALENDAR_2026[as_of_round-1]['name']})",
@@ -269,7 +270,7 @@ def simulate_season_to_round(as_of_round: int = 5) -> Dict[str, Any]:
 
 @router.get("/predictions/next-race")
 @router.get("/api/predictor/next-race")
-def get_next_race_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-24)")):
+def get_next_race_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-23)")):
     """Returns per-driver win and points probability for upcoming Grand Prix."""
     data = simulate_season_to_round(as_of_round=as_of_round)
     return {
@@ -293,7 +294,7 @@ def get_next_race_predictions(as_of_round: int = Query(5, description="Completed
 
 @router.get("/predictions/drivers-championship")
 @router.get("/api/predictor/drivers-championship")
-def get_drivers_championship_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-24)")):
+def get_drivers_championship_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-23)")):
     """Returns current Drivers' Championship win probabilities plus round-by-round trend history."""
     data = simulate_season_to_round(as_of_round=as_of_round)
     return {
@@ -313,7 +314,7 @@ def get_drivers_championship_predictions(as_of_round: int = Query(5, description
 
 @router.get("/predictions/constructors-championship")
 @router.get("/api/predictor/constructors-championship")
-def get_constructors_championship_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-24)")):
+def get_constructors_championship_predictions(as_of_round: int = Query(5, description="Completed races cutoff (1-23)")):
     """Returns current Constructors' Championship win probabilities plus round-by-round trend history."""
     data = simulate_season_to_round(as_of_round=as_of_round)
     return {

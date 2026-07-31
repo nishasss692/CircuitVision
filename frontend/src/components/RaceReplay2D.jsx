@@ -40,6 +40,12 @@ export default function RaceReplay2D({
   const [hoveredCar, setHoveredCar] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // Zoom & Pan State
+  const [zoomLevel, setZoomLevel] = useState(1.0); // 1.0x to 5.0x
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
   // References for animation loop timing & motion trails
   const animFrameRef = useRef(null);
   const lastTimeRef = useRef(null);
@@ -203,6 +209,23 @@ export default function RaceReplay2D({
     };
   }, [isPlaying, playbackSpeed, maxTimeSec, minTimeSec]);
 
+  // Native non-passive wheel listener for canvas zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheelNative = (e) => {
+      e.preventDefault();
+      const zoomDelta = e.deltaY < 0 ? 0.2 : -0.2;
+      setZoomLevel((prev) => Math.min(5.0, Math.max(1.0, prev + zoomDelta)));
+    };
+
+    canvas.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => {
+      canvas.removeEventListener('wheel', handleWheelNative);
+    };
+  }, []);
+
   // Render HTML5 2D Canvas with Motion Trails, 3-Sector Track, Car Orientation & Spills
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -213,14 +236,20 @@ export default function RaceReplay2D({
 
     ctx.clearRect(0, 0, width, height);
 
-    // Auto-scale mapping with padding
+    // Auto-scale mapping with padding + Zoom & Pan
     const padding = 55;
     const scaleX = (width - padding * 2) / (bounds.maxX - bounds.minX || 1);
     const scaleY = (height - padding * 2) / (bounds.maxY - bounds.minY || 1);
     const scale = Math.min(scaleX, scaleY);
 
-    const mapX = (x) => padding + (x - bounds.minX) * scale;
-    const mapY = (y) => height - (padding + (y - bounds.minY) * scale);
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const baseMapX = (x) => padding + (x - bounds.minX) * scale;
+    const baseMapY = (y) => height - (padding + (y - bounds.minY) * scale);
+
+    const mapX = (x) => centerX + panOffset.x + (baseMapX(x) - centerX) * zoomLevel;
+    const mapY = (y) => centerY + panOffset.y + (baseMapY(y) - centerY) * zoomLevel;
 
     // 1. Draw Grid Lines Background
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
@@ -247,7 +276,7 @@ export default function RaceReplay2D({
       // Track Outer Glow Base
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
-      ctx.lineWidth = 22;
+      ctx.lineWidth = 22 * zoomLevel;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       trackOutline.forEach((pt, i) => {
@@ -261,7 +290,7 @@ export default function RaceReplay2D({
       // Track Tarmac Surface
       ctx.beginPath();
       ctx.strokeStyle = '#111827'; // Dark slate tarmac
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 14 * zoomLevel;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       trackOutline.forEach((pt, i) => {
@@ -279,7 +308,7 @@ export default function RaceReplay2D({
       const drawSectorLine = (startIdx, endIdx, color) => {
         ctx.beginPath();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 3.5 * zoomLevel;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         for (let i = startIdx; i <= endIdx && i < totalPts; i++) {
@@ -298,8 +327,8 @@ export default function RaceReplay2D({
       // DRS Straights (Main straight highlight)
       ctx.beginPath();
       ctx.strokeStyle = '#00ff88';
-      ctx.lineWidth = 5;
-      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 5 * zoomLevel;
+      ctx.setLineDash([8 * zoomLevel, 6 * zoomLevel]);
       const drsEnd = Math.floor(totalPts * 0.12);
       for (let i = 0; i <= drsEnd && i < totalPts; i++) {
         const cx = mapX(trackOutline[i].x);
@@ -317,7 +346,7 @@ export default function RaceReplay2D({
         const px = mapX(trackOutline[pulseIdx].x);
         const py = mapY(trackOutline[pulseIdx].y);
         ctx.beginPath();
-        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.arc(px, py, 4 * zoomLevel, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = '#00f0ff';
         ctx.shadowBlur = 15;
@@ -326,12 +355,11 @@ export default function RaceReplay2D({
       }
     }
 
-    // 3. Motion Smoke Trails & Car Markers
+    // 3. Motion Smoke Trails & Car Markers (Clean Dots without Text Clutter)
     let closestCar = null;
     let closestDist = 28;
 
     if (interpolatedFrame?.cars) {
-      // Update trail history ring buffer for active cars
       const currentTrails = trailHistoryRef.current;
 
       interpolatedFrame.cars.forEach((car) => {
@@ -348,6 +376,8 @@ export default function RaceReplay2D({
         const meta = driverMetadata[car.driver] || {};
         const teamColor = meta.team_color || '#00f0ff';
         const isSelected = selectedDriver === car.driver;
+        const isDimmed = selectedDriver !== null && !isSelected;
+        const isInPit = Boolean(car.in_pit);
 
         // Check mouse hover distance
         const dx = cx - mousePos.x;
@@ -358,92 +388,144 @@ export default function RaceReplay2D({
           closestCar = { ...car, ...meta, canvasX: cx, canvasY: cy };
         }
 
+        ctx.save();
+        ctx.globalAlpha = isDimmed ? 0.3 : (isInPit ? 0.65 : 1.0);
+
         // Render Motion Smoke Trail
-        if (history.length > 1) {
+        if (history.length > 1 && (!selectedDriver || isSelected)) {
           ctx.beginPath();
           ctx.moveTo(history[0].x, history[0].y);
           for (let i = 1; i < history.length; i++) {
             ctx.lineTo(history[i].x, history[i].y);
           }
-          ctx.strokeStyle = `${teamColor}44`;
-          ctx.lineWidth = 4;
+          ctx.strokeStyle = `${teamColor}66`;
+          ctx.lineWidth = 3.5;
           ctx.lineCap = 'round';
           ctx.stroke();
         }
 
         // Render Brake Glow Aura (Red Ring when braking)
-        if (car.brake > 20) {
+        if (car.brake > 20 && !isInPit) {
           ctx.beginPath();
-          ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+          ctx.arc(cx, cy, 14, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
-          ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 20;
           ctx.fill();
-          ctx.shadowBlur = 0;
         }
 
         // Render DRS Wing Aura (Neon Green Glow when DRS active)
-        if (car.drs) {
+        if (car.drs && !isInPit) {
           ctx.beginPath();
-          ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+          ctx.arc(cx, cy, 13, 0, Math.PI * 2);
           ctx.strokeStyle = '#00ff88';
-          ctx.lineWidth = 2.5;
-          ctx.shadowColor = '#00ff88';
-          ctx.shadowBlur = 12;
+          ctx.lineWidth = 2;
           ctx.stroke();
-          ctx.shadowBlur = 0;
         }
 
         // Render Selected Driver Halo Pulse
         if (isSelected) {
           ctx.beginPath();
-          ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
+          ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2.5;
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
         }
 
-        // Car Body Marker Outer Ring
-        ctx.beginPath();
-        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-        ctx.fillStyle = `${teamColor}33`;
-        ctx.fill();
+        // Render 3-Letter Driver Code Badge (derived from driver last name, e.g. VER, HAM, LEC)
+        const driverCode = car.driver || meta.abbreviation || 'F1';
+        const labelText = isInPit ? `${driverCode} • PIT` : driverCode;
 
-        // Car Direction Arrowhead Pod
+        ctx.font = isSelected ? 'bold 10.5px monospace' : 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const textWidth = ctx.measureText(labelText).width;
+        const pillW = textWidth + 7;
+        const pillH = 13;
+        const pillX = cx - pillW / 2;
+        const pillY = cy - 16;
+
+        // Draw crisp backdrop pill behind 3-letter driver code for maximum legibility
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(pillX, pillY - pillH / 2, pillW, pillH, 3);
+        } else {
+          ctx.rect(pillX, pillY - pillH / 2, pillW, pillH);
+        }
+        ctx.fillStyle = isSelected
+          ? 'rgba(0, 240, 255, 0.35)'
+          : (isInPit ? 'rgba(245, 158, 11, 0.35)' : 'rgba(8, 12, 22, 0.85)');
+        ctx.fill();
+        ctx.strokeStyle = isSelected
+          ? '#00f0ff'
+          : (isInPit ? '#f59e0b' : `${teamColor}99`);
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // 3-Letter Driver Code text
+        ctx.fillStyle = isSelected
+          ? '#ffffff'
+          : (isInPit ? '#f59e0b' : '#f3f4f6');
+        ctx.fillText(labelText, cx, pillY);
+
+        // Aerodynamic Car Direction Arrowhead
         ctx.save();
         ctx.translate(cx, cy);
         if (car.heading !== undefined) {
           ctx.rotate(car.heading);
         }
-
-        // Draw Aerodynamic Car Shape
         ctx.beginPath();
-        ctx.moveTo(9, 0);
-        ctx.lineTo(-7, -5.5);
-        ctx.lineTo(-4, 0);
-        ctx.lineTo(-7, 5.5);
+        ctx.moveTo(8, 0);
+        ctx.lineTo(-6, -4.5);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-6, 4.5);
         ctx.closePath();
         ctx.fillStyle = teamColor;
-        ctx.shadowColor = teamColor;
-        ctx.shadowBlur = 14;
         ctx.fill();
-        ctx.shadowBlur = 0;
         ctx.restore();
 
-        // Driver Code Badge above car
-        ctx.font = 'bold 11px monospace';
-        ctx.fillStyle = isSelected ? '#00f0ff' : '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(car.driver, cx, cy - 14);
+        // Car Body Marker Dot with Dual Contrast Border (Per-team & Light/Dark separation)
+        // Outer dark ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fill();
+
+        // Team color inner fill dot
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = teamColor;
+        ctx.shadowColor = teamColor;
+        ctx.shadowBlur = isSelected ? 12 : 4;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Inner white/contrast border ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.restore();
       });
     }
 
     setHoveredCar(closestCar);
-  }, [interpolatedFrame, trackOutline, bounds, mousePos, driverMetadata, selectedDriver]);
+  }, [interpolatedFrame, trackOutline, bounds, mousePos, driverMetadata, selectedDriver, zoomLevel, panOffset]);
 
-  // Canvas Mouse Click & Move Event Handlers
+  // Canvas Mouse Drag, Click, & Move Event Handlers
+  const handleMouseDown = (e) => {
+    if (e.button === 0 || e.button === 1) { // Left or Middle mouse button
+      isDraggingRef.current = true;
+      dragStartRef.current = {
+        x: e.clientX - panOffset.x,
+        y: e.clientY - panOffset.y
+      };
+    }
+  };
+
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -451,10 +533,21 @@ export default function RaceReplay2D({
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
+    if (isDraggingRef.current) {
+      setPanOffset({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      });
+    }
+
     setMousePos({
       x: (e.clientX - rect.left) * scaleX,
       y: (e.clientY - rect.top) * scaleY
     });
+  };
+
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
   };
 
   const handleCanvasClick = () => {
@@ -573,15 +666,18 @@ export default function RaceReplay2D({
                 ref={canvasRef}
                 width={860}
                 height={520}
+                onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
                 onClick={handleCanvasClick}
-                className="w-full h-[460px] md:h-[520px] object-contain cursor-crosshair"
+                className="w-full h-[460px] md:h-[520px] object-contain cursor-crosshair active:cursor-grabbing"
               />
 
               {/* Hover Tooltip Card */}
               {hoveredCar && !selectedDriver && (
                 <div
-                  className="absolute pointer-events-none bg-gray-900/95 backdrop-blur-md p-3 rounded-2xl border border-cyan-500/50 font-mono text-xs text-white shadow-2xl space-y-1 z-20"
+                  className="absolute pointer-events-none bg-gray-900/95 backdrop-blur-md p-3 rounded-2xl border border-cyan-500/50 font-mono text-xs text-white shadow-2xl space-y-1.5 z-20"
                   style={{
                     left: `${Math.min(mousePos.x / 8.6, 72)}%`,
                     top: `${Math.max(mousePos.y / 5.2 - 18, 8)}%`
@@ -591,12 +687,19 @@ export default function RaceReplay2D({
                     <span className="font-black text-cyan-400 flex items-center gap-1">
                       <Zap size={13} /> P{hoveredCar.position} • {hoveredCar.driver}
                     </span>
-                    <span
-                      className="px-2 py-0.5 rounded text-[10px] font-black text-white"
-                      style={{ backgroundColor: hoveredCar.team_color || '#333' }}
-                    >
-                      {hoveredCar.team || 'F1'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {hoveredCar.in_pit && (
+                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-bold">
+                          PIT IN
+                        </span>
+                      )}
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-black text-white"
+                        style={{ backgroundColor: hoveredCar.team_color || '#333' }}
+                      >
+                        {hoveredCar.team || 'F1'}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 text-[11px]">
                     <span className="text-gray-400">Speed:</span>
@@ -620,6 +723,37 @@ export default function RaceReplay2D({
                 <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-xl font-mono text-xs text-emerald-400 font-bold flex items-center gap-1.5">
                   <Flag size={13} /> GREEN FLAG
                 </div>
+              </div>
+
+              {/* Interactive Zoom & Pan Controls Overlay */}
+              <div className="absolute top-4 right-4 flex items-center gap-1 bg-gray-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-gray-800 font-mono text-xs z-10 shadow-xl">
+                <button
+                  onClick={() => setZoomLevel((prev) => Math.min(5.0, prev + 0.5))}
+                  className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-cyan-600 text-white font-bold transition-all flex items-center justify-center cursor-pointer"
+                  title="Zoom In (+)"
+                >
+                  +
+                </button>
+                <span className="px-2 font-bold text-cyan-400 text-[11px] min-w-[42px] text-center">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomLevel((prev) => Math.max(1.0, prev - 0.5))}
+                  className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-cyan-600 text-white font-bold transition-all flex items-center justify-center cursor-pointer"
+                  title="Zoom Out (-)"
+                >
+                  -
+                </button>
+                <button
+                  onClick={() => {
+                    setZoomLevel(1.0);
+                    setPanOffset({ x: 0, y: 0 });
+                  }}
+                  className="px-2.5 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-[10px] transition-all flex items-center justify-center cursor-pointer"
+                  title="Reset View"
+                >
+                  RESET
+                </button>
               </div>
 
               {/* Track Sector Color Legend Overlay */}

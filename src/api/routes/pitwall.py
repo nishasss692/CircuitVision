@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
+from src.pipeline.session_loader import load_session, SessionIdentityError
+from src.pipeline.cache_utils import make_cache_path, validate_cache_payload
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("f1_pitwall")
@@ -20,6 +22,7 @@ os.makedirs(PITWALL_CACHE_DIR, exist_ok=True)
 
 router = APIRouter(tags=["Pitwall Module"])
 
+
 TRACK_STATUS_MAP = {
     '1': {"code": "1", "text": "GREEN", "description": "Track Clear", "color": "emerald"},
     '2': {"code": "2", "text": "YELLOW", "description": "Yellow Flag", "color": "amber"},
@@ -30,31 +33,37 @@ TRACK_STATUS_MAP = {
 }
 
 def load_session_pitwall(year: int = 2026, round_no: int = 1):
-    session_type = 'R'
+    """Loads FastF1 race session using the canonical shared loader with identity validation."""
     try:
-        session = fastf1.get_session(year, round_no, session_type)
-        session.load(laps=True, telemetry=False, weather=False)
-        return session, year, False
+        session, is_fallback, fallback_yr = load_session(
+            year=year,
+            round_number=round_no,
+            session_type='R',
+            laps=True,
+            telemetry=False,
+            weather=False,
+        )
+        actual_year = fallback_yr if is_fallback else year
+        return session, actual_year, is_fallback
+    except SessionIdentityError:
+        raise
     except Exception as e:
-        logger.warning(f"Could not load 2026 pitwall session {year} R{round_no}: {e}. Fallback to 2024 R{round_no}...")
-        try:
-            fb_session = fastf1.get_session(2024, round_no, session_type)
-            fb_session.load(laps=True, telemetry=False, weather=False)
-            return fb_session, 2024, True
-        except Exception as fb_err:
-            logger.warning(f"Fallback pitwall session failed: {fb_err}. Fallback to 2024 R1...")
-            fb_session2 = fastf1.get_session(2024, 1, session_type)
-            fb_session2.load(laps=True, telemetry=False, weather=False)
-            return fb_session2, 2024, True
+        raise RuntimeError(f"Failed to load pitwall session {year} R{round_no}: {e}") from e
+
 
 def process_pitwall_data(year: int, round_no: int):
-    cache_file = os.path.join(PITWALL_CACHE_DIR, f"{year}_round_{round_no}_pitwall.json")
+    cache_file = make_cache_path(PITWALL_CACHE_DIR, year, round_no, "R", "pitwall")
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
+                payload = json.load(f)
+            # Stale-cache detection: verify stored identity matches the request
+            if validate_cache_payload(payload, year, round_no, cache_file):
+                return payload
+            # validate_cache_payload already deleted the stale file; fall through to recompute
+        except Exception as cache_err:
+            logger.warning(f"Cache read error for pitwall {year} R{round_no}: {cache_err}. Recomputing.")
+
 
     session, loaded_year, is_fallback = load_session_pitwall(year, round_no)
     event_info = session.event if hasattr(session, 'event') else {}

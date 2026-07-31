@@ -11,6 +11,7 @@ from src.pipeline.normalizer import (
     normalize_weather,
     normalize_dataframe
 )
+from src.pipeline.session_loader import load_session, SessionIdentityError
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -24,28 +25,25 @@ fastf1.Cache.enable_cache(CACHE_DIR)
 
 router = APIRouter(prefix="/api", tags=["Ingestion Service"])
 
+
 def load_session_with_fallback(year: int, round_no: int, session_type: str = "R"):
-    """Loads a session with FastF1. If requested 2026/future session fails, falls back to recent cached/historical session."""
-    try:
-        session = fastf1.get_session(year, round_no, session_type)
-        session.load(laps=True, telemetry=True, weather=True)
-        return session, False
-    except Exception as e:
-        logger.warning(f"Failed to load session {year} round {round_no}: {str(e)}. Attempting fallback...")
-        
-        # Fallback 1: Try year 2025 round_no
-        fallback_year = 2025 if year == 2026 else year - 1
-        try:
-            fb_session = fastf1.get_session(fallback_year, round_no, session_type)
-            fb_session.load(laps=True, telemetry=True, weather=True)
-            logger.info(f"Fallback successful to {fallback_year} round {round_no}")
-            return fb_session, True
-        except Exception as fb_err:
-            # Fallback 2: Try 2025 Round 1 Australian GP as ultimate fallback
-            logger.warning(f"Fallback 1 failed: {str(fb_err)}. Loading fallback 2025 Round 1.")
-            fb_session2 = fastf1.get_session(2025, 1, session_type)
-            fb_session2.load(laps=True, telemetry=True, weather=True)
-            return fb_session2, True
+    """
+    Loads a FastF1 session using the canonical shared loader which validates
+    session identity (round number + year) after every load.  Falls back to
+    the prior year's same round if the primary load fails.
+
+    Returns (session, is_fallback) — identical interface to the old helper so
+    all callers can remain unchanged.
+    """
+    session, is_fallback, _ = load_session(
+        year=year,
+        round_number=round_no,
+        session_type=session_type,
+        laps=True,
+        telemetry=True,
+        weather=True,
+    )
+    return session, is_fallback
 
 @router.get("/schedule/{year}")
 def get_schedule(year: int = 2026):
@@ -68,24 +66,34 @@ def get_schedule(year: int = 2026):
 @router.get("/session/{year}/{round_no}/summary")
 def get_session_summary(year: int, round_no: int, session_type: str = "R"):
     """Returns normalized high-level summary, drivers, weather, and results for a race session."""
-    session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    try:
+        session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    except SessionIdentityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     summary = normalize_session_summary(session)
     summary["is_fallback_data"] = is_fallback
+    summary["actual_round_number"] = int(session.event.get("RoundNumber", round_no))
+    summary["actual_event_name"] = str(session.event.get("EventName", ""))
     summary["weather"] = normalize_weather(session)[:10]  # sample weather snapshots
     return summary
 
 @router.get("/session/{year}/{round_no}/laps")
 def get_session_laps(year: int, round_no: int, session_type: str = "R", driver: Optional[str] = None):
     """Returns normalized lap timing data, stint info, tyre compounds, and sector times."""
-    session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    try:
+        session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    except SessionIdentityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     laps = normalize_laps(session)
-    
+
     if driver:
         laps = [lap for lap in laps if str(lap.get("driver")).upper() == str(driver).upper()]
-        
+
     return {
         "year": year,
         "round_number": round_no,
+        "actual_round_number": int(session.event.get("RoundNumber", round_no)),
+        "actual_event_name": str(session.event.get("EventName", "")),
         "session": session.name,
         "is_fallback_data": is_fallback,
         "total_laps_returned": len(laps),
@@ -101,8 +109,11 @@ def get_session_telemetry(
     lap_number: Optional[int] = Query(None, description="Specific lap number")
 ):
     """Returns car 2D/3D telemetry coordinates and sensor data (X, Y, Z, Speed, Throttle, Brake, Gear)."""
-    session, is_fallback = load_session_with_fallback(year, round_no, session_type)
-    
+    try:
+        session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    except SessionIdentityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
     # If no driver specified, default to fastest lap driver to avoid payload explosion
     if not driver and hasattr(session, 'laps') and not session.laps.empty:
         fastest_lap = session.laps.pick_fastest()
@@ -111,10 +122,12 @@ def get_session_telemetry(
             lap_number = int(fastest_lap['LapNumber'])
 
     telemetry = normalize_telemetry(session, driver=driver, lap_number=lap_number)
-    
+
     return {
         "year": year,
         "round_number": round_no,
+        "actual_round_number": int(session.event.get("RoundNumber", round_no)),
+        "actual_event_name": str(session.event.get("EventName", "")),
         "driver": driver,
         "lap_number": lap_number,
         "is_fallback_data": is_fallback,
@@ -125,19 +138,22 @@ def get_session_telemetry(
 @router.get("/session/{year}/{round_no}/pitwall")
 def get_pitwall_leaderboard(year: int, round_no: int, session_type: str = "R"):
     """Returns live-ish pitwall leaderboard: gaps to leader, tyre compound & age, pit stop history, track status."""
-    session, is_fallback = load_session_with_fallback(year, round_no, session_type)
-    
+    try:
+        session, is_fallback = load_session_with_fallback(year, round_no, session_type)
+    except SessionIdentityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
     leaderboard = []
     if hasattr(session, 'results') and session.results is not None and not session.results.empty:
         for idx, row in session.results.iterrows():
             d_code = str(row.get("Abbreviation", ""))
             d_laps = session.laps.pick_driver(d_code) if hasattr(session, 'laps') else None
-            
+
             current_compound = None
             tyre_life = None
             stint = None
             last_lap_time = None
-            
+
             if d_laps is not None and not d_laps.empty:
                 last_lap = d_laps.iloc[-1]
                 current_compound = str(last_lap.get("Compound")) if pd.notna(last_lap.get("Compound")) else None
@@ -166,6 +182,8 @@ def get_pitwall_leaderboard(year: int, round_no: int, session_type: str = "R"):
     return {
         "year": year,
         "round_number": round_no,
+        "actual_round_number": int(session.event.get("RoundNumber", round_no)),
+        "actual_event_name": str(session.event.get("EventName", "")),
         "event_name": session.event.get("EventName"),
         "is_fallback_data": is_fallback,
         "leaderboard": leaderboard,
