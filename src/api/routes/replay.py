@@ -164,6 +164,15 @@ def process_replay_and_leaderboard(year: int, round_no: int):
     if min_t == float('inf') or max_t == float('-inf'):
         min_t, max_t = 0.0, 100.0
 
+    # Bound min_t and max_t strictly to active race lap window to exclude idle garage wait time
+    if hasattr(session, 'laps') and session.laps is not None and not session.laps.empty:
+        valid_laps_times = session.laps.dropna(subset=['LapStartTime', 'Time'])
+        if not valid_laps_times.empty:
+            race_start_sec = float(valid_laps_times['LapStartTime'].min().total_seconds()) - 10.0
+            race_end_sec = float(valid_laps_times['Time'].max().total_seconds()) + 10.0
+            min_t = max(min_t, race_start_sec)
+            max_t = min(max_t, race_end_sec)
+
     # Fixed sampling interval dt = 0.5s absolute session time
     dt = 0.5
     time_grid = np.arange(min_t, max_t, dt)
@@ -281,10 +290,10 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                             pit_windows.append((start_p, end_p))
                     driver_pit_windows[abbr] = pit_windows
 
-    # Sample time steps: cap at ~2500 points max for smooth animation & fast payload
+    # Sample time steps: cap step_stride to max 2 for 0.5s - 1.0s resolution animation
     step_stride = 1
-    if len(time_grid) > 2500:
-        step_stride = int(np.ceil(len(time_grid) / 2000.0))
+    if len(time_grid) > 4000:
+        step_stride = 2
 
     sampled_time_grid = time_grid[::step_stride]
     normalized_timestamps = (sampled_time_grid - min_t).round(2).tolist()

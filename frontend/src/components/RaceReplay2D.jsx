@@ -236,17 +236,26 @@ export default function RaceReplay2D({
 
     ctx.clearRect(0, 0, width, height);
 
-    // Auto-scale mapping with padding + Zoom & Pan
+    // Auto-scale mapping with padding + Zoom & Pan (perfectly centered!)
     const padding = 55;
-    const scaleX = (width - padding * 2) / (bounds.maxX - bounds.minX || 1);
-    const scaleY = (height - padding * 2) / (bounds.maxY - bounds.minY || 1);
-    const scale = Math.min(scaleX, scaleY);
+    const availableWidth = width - padding * 2;
+    const availableHeight = height - padding * 2;
+    const trackWidth = bounds.maxX - bounds.minX || 1;
+    const trackHeight = bounds.maxY - bounds.minY || 1;
+
+    const scale = Math.min(availableWidth / trackWidth, availableHeight / trackHeight);
+
+    const renderedWidth = trackWidth * scale;
+    const renderedHeight = trackHeight * scale;
+
+    const offsetX = padding + (availableWidth - renderedWidth) / 2;
+    const offsetY = padding + (availableHeight - renderedHeight) / 2;
 
     const centerX = width / 2;
     const centerY = height / 2;
 
-    const baseMapX = (x) => padding + (x - bounds.minX) * scale;
-    const baseMapY = (y) => height - (padding + (y - bounds.minY) * scale);
+    const baseMapX = (x) => offsetX + (x - bounds.minX) * scale;
+    const baseMapY = (y) => height - (offsetY + (y - bounds.minY) * scale);
 
     const mapX = (x) => centerX + panOffset.x + (baseMapX(x) - centerX) * zoomLevel;
     const mapY = (y) => centerY + panOffset.y + (baseMapY(y) - centerY) * zoomLevel;
