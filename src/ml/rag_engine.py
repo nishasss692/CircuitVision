@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import numpy as np
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -41,7 +41,7 @@ RACE_ALIAS_MAP = {
     "canadian": "Canadian Grand Prix",
     "montreal": "Canadian Grand Prix",
     "spanish": "Spanish Grand Prix",
-    "barcelona": "Spanish Grand Prix",
+    "barcelona": "Barcelona Grand Prix",
     "austrian": "Austrian Grand Prix",
     "red bull ring": "Austrian Grand Prix",
     "british": "British Grand Prix",
@@ -76,8 +76,26 @@ ROUND_NUMBER_MAP = {
     1: "Australian Grand Prix",
     2: "Chinese Grand Prix",
     3: "Japanese Grand Prix",
-    4: "Bahrain Grand Prix",
-    5: "Saudi Arabian Grand Prix",
+    4: "Miami Grand Prix",
+    5: "Canadian Grand Prix",
+    6: "Monaco Grand Prix",
+    7: "Barcelona Grand Prix",
+    8: "Austrian Grand Prix",
+    9: "British Grand Prix",
+    10: "Belgian Grand Prix",
+    11: "Hungarian Grand Prix",
+    12: "Dutch Grand Prix",
+    13: "Italian Grand Prix",
+    14: "Spanish Grand Prix",
+    15: "Azerbaijan Grand Prix",
+    16: "Bahrain Grand Prix",
+    17: "Singapore Grand Prix",
+    18: "United States Grand Prix",
+    19: "Mexico City Grand Prix",
+    20: "São Paulo Grand Prix",
+    21: "Las Vegas Grand Prix",
+    22: "Qatar Grand Prix",
+    23: "Abu Dhabi Grand Prix",
 }
 
 UNSUPPORTED_ENTITIES = ["porsche", "speedracer", "bmw", "toyota", "ford", "audi", "schumacher", "senna", "prost"]
@@ -209,6 +227,9 @@ def extract_query_entities(query_text: str) -> Dict[str, Any]:
     return entities
 
 
+import time
+import functools
+
 # ---------------------------------------------------------------------------
 # RAG Engine
 # ---------------------------------------------------------------------------
@@ -217,12 +238,12 @@ GENERAL_CORPUS_CATEGORIES = {"regulations", "glossary", "lineup"}
 
 CAPABILITY_RESPONSE = (
     "Hello! I'm your 2026 F1 Pitwall AI Assistant. Here's what I can help with:\n\n"
-    "* Race results - completed 2026 races (Rounds 1-5: Australia, China, Japan, Bahrain, Saudi Arabia)\n"
-    "* Championship standings - drivers' and constructors' standings as of Round 5\n"
+    "* Race results - completed 2026 races (Rounds 1-11: Australia, China, Japan, Miami, Canada, Monaco, Barcelona, Austria, Silverstone, Spa, Hungary)\n"
+    "* Championship standings - drivers' and constructors' standings as of Round 11\n"
     "* F1 rules & regulations - 2026 active aero (X-Mode / Z-Mode), technical regulations\n"
     "* F1 terminology - DRS, undercut, overcut, parc ferme, tyre compounds, and more\n"
     "* Driver & team lineup - full 2026 driver and constructor grid\n\n"
-    "Try asking: 'Who won the Bahrain GP?', 'What is DRS?', or 'Who leads the championship?'"
+    "Try asking: 'Who won the Belgian GP?', 'What is DRS?', or 'Who leads the championship?'"
 )
 
 
@@ -231,7 +252,24 @@ class F1RAGEngine:
         self.corpus = []
         self.vectorizer = None
         self.tfidf_matrix = None
+        self._response_cache: Dict[str, Dict[str, Any]] = {}
+        self.chroma_collection = None
         self._load_corpus()
+
+    def _get_latest_completed_round_info(self) -> Tuple[int, str]:
+        """Returns (max_round_number, race_name) across ingested completed races in corpus."""
+        latest_round = 0
+        latest_name = "Hungarian Grand Prix"
+        for doc in self.corpus:
+            meta = doc.get("metadata", {})
+            r_num = meta.get("round_number", 0)
+            if r_num > latest_round and meta.get("category") == "race_results":
+                latest_round = r_num
+                latest_name = meta.get("race_name", f"Round {r_num}")
+        if latest_round == 0:
+            latest_round = 11
+            latest_name = "Hungarian Grand Prix"
+        return latest_round, latest_name
 
     def _load_corpus(self):
         if not os.path.exists(INDEX_FILE):
@@ -250,28 +288,63 @@ class F1RAGEngine:
             self.vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
             self.tfidf_matrix = self.vectorizer.fit_transform(texts)
 
+        # Try initializing ChromaDB collection connection if available
+        try:
+            import chromadb
+            db_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_f1_db"))
+            client = chromadb.PersistentClient(path=db_dir)
+            self.chroma_collection = client.get_or_create_collection(name="f1_knowledge")
+        except Exception as e:
+            logger.info(f"ChromaDB persistent store unavailable, using fast in-memory TF-IDF vectorizer: {e}")
+            self.chroma_collection = None
+
+    def reload_index(self):
+        """Reloads vector index & clears response cache after new data ingestion."""
+        logger.info("Reloading RAG engine index and clearing response cache...")
+        self._response_cache.clear()
+        self._load_corpus()
+
+    @functools.lru_cache(maxsize=128)
+    def _transform_query(self, query_text: str):
+        """Cached vector transformation for fast similarity calculation."""
+        if not self.vectorizer:
+            return None
+        return self.vectorizer.transform([query_text])
+
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
 
     def query(self, user_query: str, year: int = 2026, round_number: int = 1) -> Dict[str, Any]:
         """
-        Main query entry point.  Classifies the query first, then routes to
-        the appropriate handler:
-          CONVERSATIONAL -> _handle_conversational_query()
-          GENERAL_F1     -> _handle_general_query()
-          SEASON_FACTUAL -> _handle_season_factual_query()  (original grounded pipeline)
+        Main query entry point with step profiling, response caching, metadata pre-filtering,
+        and grounded generation.
         """
-        q_lower = user_query.strip().lower()
+        t_start = time.perf_counter()
+        q_clean = user_query.strip()
+        q_key = f"{year}_{q_clean.lower()}"
 
-        if not q_lower:
+        if not q_clean:
             return {
                 "answer": "Please provide a valid question.",
                 "sources": [],
                 "confidence": 0.0,
                 "is_grounded": True,
-                "unable_to_answer": True
+                "unable_to_answer": True,
+                "latency_ms": 0.0,
+                "cached": False
             }
+
+        # Response Caching (Latency Fix #5)
+        if q_key in self._response_cache:
+            cached_res = dict(self._response_cache[q_key])
+            t_cached = round((time.perf_counter() - t_start) * 1000, 2)
+            cached_res["latency_ms"] = t_cached
+            cached_res["cached"] = True
+            logger.info(f"Response Cache HIT for query: {q_clean!r} ({t_cached} ms)")
+            return cached_res
+
+        t_class_start = time.perf_counter()
 
         # Step 1: Entity extraction (reused by classifier)
         entities = extract_query_entities(user_query)
@@ -279,24 +352,38 @@ class F1RAGEngine:
         # Step 2: Hard-stop for genuinely unsupported entities
         if entities["is_unsupported"]:
             ent = entities["unsupported_entity"]
-            return {
-                "answer": f"I do not have information about '{ent}' in the 2026 Formula 1 dataset. This driver/team is not in the ingested 2026 season data.",
+            res = {
+                "answer": f"I do not have information about '{ent}' in the {year} Formula 1 dataset. This driver/team is not in the ingested {year} season data.",
                 "sources": ["ChromaDB Vector Store"],
                 "confidence": 0.10,
                 "is_grounded": True,
-                "unable_to_answer": True
+                "unable_to_answer": True,
+                "latency_ms": round((time.perf_counter() - t_start) * 1000, 2),
+                "cached": False
             }
+            self._response_cache[q_key] = res
+            return res
 
         # Step 3: Classify and route
         category = classify_query(user_query, entities)
-        logger.info(f"Query classified as [{category}]: {user_query!r}")
+        class_ms = round((time.perf_counter() - t_class_start) * 1000, 2)
 
+        t_ret_start = time.perf_counter()
         if category == QUERY_CATEGORY_CONVERSATIONAL:
-            return self._handle_conversational_query(user_query)
+            res = self._handle_conversational_query(user_query)
         elif category == QUERY_CATEGORY_GENERAL_F1:
-            return self._handle_general_query(user_query)
+            res = self._handle_general_query(user_query)
         else:
-            return self._handle_season_factual_query(user_query, entities)
+            res = self._handle_season_factual_query(user_query, entities, year=year)
+
+        t_end = time.perf_counter()
+        total_ms = round((t_end - t_start) * 1000, 2)
+        res["latency_ms"] = total_ms
+        res["cached"] = False
+
+        logger.info(f"RAG Query processed: category=[{category}], total={total_ms}ms (class={class_ms}ms)")
+        self._response_cache[q_key] = res
+        return res
 
     # ------------------------------------------------------------------
     # Handler: CONVERSATIONAL
@@ -330,8 +417,7 @@ class F1RAGEngine:
     def _handle_general_query(self, user_query: str) -> Dict[str, Any]:
         """
         Answer general F1 knowledge queries by searching only the non-race-specific
-        corpus chunks (regulations, glossary, lineup).  No race-name metadata filter
-        or retrieval sanity check is applied.
+        corpus chunks (regulations, glossary, lineup).
         """
         if not self.vectorizer or self.tfidf_matrix is None:
             return {
@@ -351,36 +437,36 @@ class F1RAGEngine:
         best_score = 0.0
 
         if general_indices:
-            q_vec = self.vectorizer.transform([user_query])
-            sub_matrix = self.tfidf_matrix[general_indices]
-            sim_scores = cosine_similarity(q_vec, sub_matrix)[0]
+            q_vec = self._transform_query(user_query)
+            if q_vec is not None:
+                sub_matrix = self.tfidf_matrix[general_indices]
+                sim_scores = cosine_similarity(q_vec, sub_matrix)[0]
 
-            top_sub_indices = np.argsort(sim_scores)[::-1][:3]
-            best_score = float(sim_scores[top_sub_indices[0]]) if len(top_sub_indices) > 0 else 0.0
+                top_sub_indices = np.argsort(sim_scores)[::-1][:2]
+                best_score = float(sim_scores[top_sub_indices[0]]) if len(top_sub_indices) > 0 else 0.0
 
-            for sub_idx in top_sub_indices:
-                score = float(sim_scores[sub_idx])
-                if score > 0.05:
-                    actual_idx = general_indices[sub_idx]
-                    retrieved_docs.append(self.corpus[actual_idx])
+                for sub_idx in top_sub_indices:
+                    score = float(sim_scores[sub_idx])
+                    if score > 0.05:
+                        actual_idx = general_indices[sub_idx]
+                        retrieved_docs.append(self.corpus[actual_idx])
 
         if retrieved_docs:
-            top_doc = retrieved_docs[0]
-            content = top_doc["content"]
+            answer_text = self._generate_grounded_answer(user_query, retrieved_docs)
             sources = list(set([d.get("source", "F1 Knowledge Base") for d in retrieved_docs]))
             return {
-                "answer": content,
+                "answer": answer_text,
                 "sources": sources,
                 "confidence": float(round(min(0.99, max(0.75, best_score * 3.0)), 2)),
                 "is_grounded": False,
                 "unable_to_answer": False
             }
 
-        # Soft fallback for unmatched general query
+        latest_round, latest_race_name = self._get_latest_completed_round_info()
         return {
             "answer": (
                 "I don't have a specific article on that topic in my knowledge base, "
-                "but I can answer questions about 2026 F1 races (Rounds 1-5), "
+                f"but I can answer questions about 2026 F1 races (Rounds 1-{latest_round}), "
                 "championship standings, technical regulations, and F1 terminology such as "
                 "DRS, undercut, parc ferme, tyre compounds, and active aerodynamics."
             ),
@@ -391,28 +477,35 @@ class F1RAGEngine:
         }
 
     # ------------------------------------------------------------------
-    # Handler: SEASON_FACTUAL (original grounded pipeline - unchanged)
+    # Handler: SEASON_FACTUAL (grounded pipeline)
     # ------------------------------------------------------------------
 
-    def _handle_season_factual_query(self, user_query: str, entities: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_season_factual_query(self, user_query: str, entities: Dict[str, Any], year: int = 2026) -> Dict[str, Any]:
         """
         Grounded retrieval pipeline for season-specific factual queries.
-        Uses metadata pre-filtering, retrieval sanity check, and post-retrieval
-        race mismatch guard - identical to the original implementation.
+        Uses metadata pre-filtering, top-chunk context payload optimization,
+        and post-retrieval race mismatch guard.
         """
-        candidate_indices = list(range(len(self.corpus)))
+        latest_round, latest_race_name = self._get_latest_completed_round_info()
+        cutoff_label = f"Round {latest_round} {latest_race_name}"
+
+        # Hard metadata filter by season
+        candidate_indices = [
+            idx for idx, doc in enumerate(self.corpus)
+            if doc.get("metadata", {}).get("season", 2026) == year
+        ]
         extracted_race = entities["race_name"]
 
         if extracted_race:
             matching_indices = [
-                idx for idx, doc in enumerate(self.corpus)
-                if doc.get("metadata", {}).get("race_name") == extracted_race
+                idx for idx in candidate_indices
+                if self.corpus[idx].get("metadata", {}).get("race_name") == extracted_race
             ]
 
             if not matching_indices:
                 return {
-                    "answer": f"I do not have race result data for the 2026 {extracted_race}. This race has not taken place yet in the completed 2026 season dataset (data cutoff: Round 5 Saudi Arabian GP).",
-                    "sources": ["2026 Season Data Cutoff (Round 5)"],
+                    "answer": f"I do not have race result data for the {year} {extracted_race}. This race has not taken place yet in the completed {year} season dataset (data cutoff: {cutoff_label}).",
+                    "sources": [f"{year} Season Data Cutoff ({cutoff_label})"],
                     "confidence": 0.95,
                     "is_grounded": True,
                     "unable_to_answer": True
@@ -423,42 +516,37 @@ class F1RAGEngine:
         best_score = 0.0
 
         if self.vectorizer and self.tfidf_matrix is not None and candidate_indices:
-            q_vec = self.vectorizer.transform([user_query])
-            sub_matrix = self.tfidf_matrix[candidate_indices]
-            sim_scores = cosine_similarity(q_vec, sub_matrix)[0]
+            q_vec = self._transform_query(user_query)
+            if q_vec is not None:
+                sub_matrix = self.tfidf_matrix[candidate_indices]
+                sim_scores = cosine_similarity(q_vec, sub_matrix)[0]
 
-            top_sub_indices = np.argsort(sim_scores)[::-1][:3]
-            best_score = float(sim_scores[top_sub_indices[0]]) if len(top_sub_indices) > 0 else 0.0
+                top_sub_indices = np.argsort(sim_scores)[::-1][:2]
+                best_score = float(sim_scores[top_sub_indices[0]]) if len(top_sub_indices) > 0 else 0.0
 
-            for sub_idx in top_sub_indices:
-                score = float(sim_scores[sub_idx])
-                if score > 0.01 or len(candidate_indices) == 1:
-                    actual_corpus_idx = candidate_indices[sub_idx]
-                    retrieved_docs.append(self.corpus[actual_corpus_idx])
+                for sub_idx in top_sub_indices:
+                    score = float(sim_scores[sub_idx])
+                    if score > 0.01 or len(candidate_indices) == 1:
+                        actual_corpus_idx = candidate_indices[sub_idx]
+                        retrieved_docs.append(self.corpus[actual_corpus_idx])
 
         if retrieved_docs:
             top_doc = retrieved_docs[0]
 
             if extracted_race and top_doc.get("metadata", {}).get("race_name") != extracted_race:
                 return {
-                    "answer": f"I do not have race result data for the 2026 {extracted_race}. This race has not taken place yet in the completed 2026 season dataset (data cutoff: Round 5 Saudi Arabian GP).",
-                    "sources": ["2026 Season Data Cutoff (Round 5)"],
+                    "answer": f"I do not have race result data for the {year} {extracted_race}. This race has not taken place yet in the completed {year} season dataset (data cutoff: {cutoff_label}).",
+                    "sources": [f"{year} Season Data Cutoff ({cutoff_label})"],
                     "confidence": 0.95,
                     "is_grounded": True,
                     "unable_to_answer": True
                 }
 
             sources = list(set([d.get("source", "ChromaDB Vector Store") for d in retrieved_docs]))
-            content = top_doc["content"]
-            title = top_doc["title"]
-
-            if top_doc.get("category") in ("race_results", "standings", "regulations", "glossary"):
-                ans = content
-            else:
-                ans = f"Based on retrieved 2026 F1 data ({title}): {content}"
+            answer_text = self._generate_grounded_answer(user_query, retrieved_docs)
 
             return {
-                "answer": ans,
+                "answer": answer_text,
                 "sources": sources,
                 "confidence": float(round(min(0.99, max(0.85, best_score * 2.5)), 2)),
                 "is_grounded": True,
@@ -466,13 +554,60 @@ class F1RAGEngine:
             }
 
         return {
-            "answer": "I do not have information about that query in the 2026 Formula 1 dataset or reference regulations.",
+            "answer": f"I do not have information about that query in the {year} Formula 1 dataset or reference regulations.",
             "sources": ["ChromaDB Vector Store"],
             "confidence": 0.20,
             "is_grounded": True,
             "unable_to_answer": True
         }
 
+    # ------------------------------------------------------------------
+    # Grounded Generation (Gemini LLM or Direct Context Fallback)
+    # ------------------------------------------------------------------
+
+    def _generate_grounded_answer(self, query: str, retrieved_docs: List[Dict[str, Any]]) -> str:
+        """
+        Generates an answer strictly grounded in retrieved docs. Uses Gemini API
+        if an API key is available in environment; otherwise formats exact
+        grounded doc content directly.
+        """
+        if not retrieved_docs:
+            return "No matching context found."
+
+        top_doc = retrieved_docs[0]
+        content = top_doc["content"]
+        title = top_doc["title"]
+
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel("gemini-1.5-flash")
+
+                context_str = "\n---\n".join([f"[{d['title']}]: {d['content']}" for d in retrieved_docs[:2]])
+                prompt = (
+                    "You are the 2026 F1 Pitwall AI Assistant.\n"
+                    "Instructions: Answer the user question STRICTLY using only the retrieved context below. "
+                    "Do NOT use outside knowledge, guess, or hallucinate. If context is insufficient, state that you cannot answer.\n\n"
+                    f"Retrieved Context:\n{context_str}\n\n"
+                    f"User Question: {query}\n"
+                    "Answer:"
+                )
+                response = model.generate_content(prompt)
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.warning(f"Gemini generation call failed, falling back to grounded chunk text: {e}")
+
+        # Deterministic grounded fallback
+        if top_doc.get("category") in ("race_results", "standings", "regulations", "glossary"):
+            return content
+        else:
+            return f"Based on retrieved 2026 F1 data ({title}): {content}"
+
 
 # Global singleton instance
 rag_engine = F1RAGEngine()
+

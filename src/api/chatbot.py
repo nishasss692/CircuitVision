@@ -20,6 +20,10 @@ class ChatQueryRequest(BaseModel):
     year: Optional[int] = 2026
     round_number: Optional[int] = 1
 
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
+
 @router.post("/chat")
 def chat_endpoint(req: ChatRequest):
     """
@@ -38,11 +42,44 @@ def chat_endpoint(req: ChatRequest):
             "sources": res["sources"],
             "confidence": res["confidence"],
             "is_grounded": res["is_grounded"],
-            "unable_to_answer": res["unable_to_answer"]
+            "unable_to_answer": res["unable_to_answer"],
+            "latency_ms": res.get("latency_ms", 0.0),
+            "cached": res.get("cached", False)
         }
     except Exception as e:
         logger.error(f"Error processing RAG query: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat/stream")
+def chat_stream_endpoint(req: ChatRequest):
+    """
+    Streaming endpoint returning SSE tokens for low perceived latency on frontend.
+    """
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Query string cannot be empty")
+
+    async def event_generator():
+        try:
+            res = rag_engine.query(req.query, year=req.year or 2026, round_number=req.round_number or 1)
+            full_text = res["answer"]
+            words = full_text.split(" ")
+            for i, word in enumerate(words):
+                chunk = word + (" " if i < len(words) - 1 else "")
+                data = json.dumps({
+                    "delta": chunk,
+                    "done": False,
+                    "sources": res["sources"] if i == len(words) - 1 else [],
+                    "unable_to_answer": res["unable_to_answer"],
+                    "latency_ms": res.get("latency_ms", 0.0)
+                })
+                yield f"data: {data}\n\n"
+                await asyncio.sleep(0.01)
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            logger.error(f"Error in stream generation: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/api/chatbot/query")
 def chat_query_legacy(req: ChatQueryRequest):
@@ -62,9 +99,12 @@ def chat_query_legacy(req: ChatQueryRequest):
             "sources": res["sources"],
             "confidence": res["confidence"],
             "is_grounded": res["is_grounded"],
-            "unable_to_answer": res["unable_to_answer"]
+            "unable_to_answer": res["unable_to_answer"],
+            "latency_ms": res.get("latency_ms", 0.0),
+            "cached": res.get("cached", False)
         }
     except Exception as e:
         logger.error(f"Error processing legacy RAG query: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 

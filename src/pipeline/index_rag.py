@@ -77,8 +77,8 @@ COMPLETED_RACES_2026 = [
         "p2_team": "Mercedes",
         "p3": "Charles Leclerc",
         "p3_team": "Ferrari",
-        "p4": "Max Verstappen",
-        "p4_team": "Red Bull Racing",
+        "p4": "Lewis Hamilton",
+        "p4_team": "Ferrari",
         "p5": "Lando Norris",
         "p5_team": "McLaren",
         "fastest_lap": "George Russell (1:19.842)",
@@ -89,17 +89,17 @@ COMPLETED_RACES_2026 = [
         "round": 2,
         "name": "Chinese Grand Prix",
         "circuit": "Shanghai International Circuit",
-        "winner": "Max Verstappen",
-        "winner_team": "Red Bull Racing",
-        "p2": "Lando Norris",
-        "p2_team": "McLaren",
-        "p3": "Oscar Piastri",
-        "p3_team": "McLaren",
-        "p4": "Lewis Hamilton",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "George Russell",
+        "p2_team": "Mercedes",
+        "p3": "Lewis Hamilton",
+        "p3_team": "Ferrari",
+        "p4": "Charles Leclerc",
         "p4_team": "Ferrari",
-        "p5": "Charles Leclerc",
-        "p5_team": "Ferrari",
-        "fastest_lap": "Max Verstappen (1:34.210)",
+        "p5": "Oliver Bearman",
+        "p5_team": "Haas F1 Team",
+        "fastest_lap": "Kimi Antonelli (1:34.210)",
         "strategy": "2-stop (Medium to Hard to Medium)",
         "safety_cars": 0
     },
@@ -107,55 +107,163 @@ COMPLETED_RACES_2026 = [
         "round": 3,
         "name": "Japanese Grand Prix",
         "circuit": "Suzuka Circuit",
-        "winner": "Max Verstappen",
-        "winner_team": "Red Bull Racing",
-        "p2": "Charles Leclerc",
-        "p2_team": "Ferrari",
-        "p3": "Lando Norris",
-        "p3_team": "McLaren",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "Oscar Piastri",
+        "p2_team": "McLaren",
+        "p3": "Charles Leclerc",
+        "p3_team": "Ferrari",
         "p4": "George Russell",
         "p4_team": "Mercedes",
-        "p5": "Carlos Sainz",
-        "p5_team": "Williams",
+        "p5": "Lando Norris",
+        "p5_team": "McLaren",
         "fastest_lap": "Charles Leclerc (1:30.988)",
         "strategy": "1-stop (Medium to Hard on Lap 24)",
         "safety_cars": 0
     },
     {
         "round": 4,
-        "name": "Bahrain Grand Prix",
-        "circuit": "Bahrain International Circuit",
-        "winner": "Charles Leclerc",
-        "winner_team": "Ferrari",
-        "p2": "Max Verstappen",
-        "p2_team": "Red Bull Racing",
-        "p3": "Lewis Hamilton",
-        "p3_team": "Ferrari",
-        "p4": "Lando Norris",
-        "p4_team": "McLaren",
-        "p5": "Oscar Piastri",
-        "p5_team": "McLaren",
-        "fastest_lap": "Lewis Hamilton (1:32.411)",
-        "strategy": "2-stop (Soft C4 to Medium C3 to Hard C2)",
+        "name": "Miami Grand Prix",
+        "circuit": "Miami International Autodrome",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "Lando Norris",
+        "p2_team": "McLaren",
+        "p3": "Oscar Piastri",
+        "p3_team": "McLaren",
+        "p4": "George Russell",
+        "p4_team": "Mercedes",
+        "p5": "Max Verstappen",
+        "p5_team": "Red Bull Racing",
+        "fastest_lap": "Kimi Antonelli (1:29.812)",
+        "strategy": "1-stop (Medium to Hard)",
         "safety_cars": 1
     },
     {
         "round": 5,
-        "name": "Saudi Arabian Grand Prix",
-        "circuit": "Jeddah Corniche Circuit",
-        "winner": "Max Verstappen",
-        "winner_team": "Red Bull Racing",
-        "p2": "Charles Leclerc",
+        "name": "Canadian Grand Prix",
+        "circuit": "Circuit Gilles-Villeneuve",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "Lewis Hamilton",
         "p2_team": "Ferrari",
-        "p3": "George Russell",
+        "p3": "Max Verstappen",
+        "p3_team": "Red Bull Racing",
+        "p4": "Charles Leclerc",
+        "p4_team": "Ferrari",
+        "p5": "Isack Hadjar",
+        "p5_team": "Red Bull Racing",
+        "fastest_lap": "Lewis Hamilton (1:15.201)",
+        "strategy": "1-stop (Medium to Hard)",
+        "safety_cars": 1
+    },
+    {
+        "round": 6,
+        "name": "Monaco Grand Prix",
+        "circuit": "Circuit de Monaco",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "Lewis Hamilton",
+        "p2_team": "Ferrari",
+        "p3": "Pierre Gasly",
+        "p3_team": "Alpine",
+        "p4": "Isack Hadjar",
+        "p4_team": "Red Bull Racing",
+        "p5": "Oscar Piastri",
+        "p5_team": "McLaren",
+        "fastest_lap": "Kimi Antonelli (1:13.901)",
+        "strategy": "1-stop (Soft to Hard)",
+        "safety_cars": 2
+    },
+    {
+        "round": 7,
+        "name": "Barcelona Grand Prix",
+        "circuit": "Circuit de Barcelona-Catalunya",
+        "winner": "Lewis Hamilton",
+        "winner_team": "Ferrari",
+        "p2": "George Russell",
+        "p2_team": "Mercedes",
+        "p3": "Lando Norris",
+        "p3_team": "McLaren",
+        "p4": "Max Verstappen",
+        "p4_team": "Red Bull Racing",
+        "p5": "Oscar Piastri",
+        "p5_team": "McLaren",
+        "fastest_lap": "Lewis Hamilton (1:17.111)",
+        "strategy": "2-stop (Soft to Medium to Hard)",
+        "safety_cars": 0
+    },
+    {
+        "round": 8,
+        "name": "Austrian Grand Prix",
+        "circuit": "Red Bull Ring",
+        "winner": "George Russell",
+        "winner_team": "Mercedes",
+        "p2": "Max Verstappen",
+        "p2_team": "Red Bull Racing",
+        "p3": "Kimi Antonelli",
         "p3_team": "Mercedes",
+        "p4": "Oscar Piastri",
+        "p4_team": "McLaren",
+        "p5": "Lewis Hamilton",
+        "p5_team": "Ferrari",
+        "fastest_lap": "George Russell (1:07.910)",
+        "strategy": "2-stop (Medium to Hard to Soft)",
+        "safety_cars": 1
+    },
+    {
+        "round": 9,
+        "name": "British Grand Prix",
+        "circuit": "Silverstone Circuit",
+        "winner": "Charles Leclerc",
+        "winner_team": "Ferrari",
+        "p2": "George Russell",
+        "p2_team": "Mercedes",
+        "p3": "Lewis Hamilton",
+        "p3_team": "Ferrari",
         "p4": "Lando Norris",
         "p4_team": "McLaren",
-        "p5": "Kimi Antonelli",
-        "p5_team": "Mercedes",
-        "fastest_lap": "Max Verstappen (1:29.112)",
-        "strategy": "1-stop (Medium to Hard on Lap 19)",
-        "safety_cars": 2
+        "p5": "Isack Hadjar",
+        "p5_team": "Red Bull Racing",
+        "fastest_lap": "Charles Leclerc (1:28.401)",
+        "strategy": "1-stop (Medium to Hard)",
+        "safety_cars": 1
+    },
+    {
+        "round": 10,
+        "name": "Belgian Grand Prix",
+        "circuit": "Circuit de Spa-Francorchamps",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
+        "p2": "Charles Leclerc",
+        "p2_team": "Ferrari",
+        "p3": "Max Verstappen",
+        "p3_team": "Red Bull Racing",
+        "p4": "Lewis Hamilton",
+        "p4_team": "Ferrari",
+        "p5": "Oscar Piastri",
+        "p5_team": "McLaren",
+        "fastest_lap": "Kimi Antonelli (1:45.120)",
+        "strategy": "1-stop (Medium to Hard)",
+        "safety_cars": 1
+    },
+    {
+        "round": 11,
+        "name": "Hungarian Grand Prix",
+        "circuit": "Hungaroring",
+        "winner": "Lando Norris",
+        "winner_team": "McLaren",
+        "p2": "Max Verstappen",
+        "p2_team": "Red Bull Racing",
+        "p3": "Kimi Antonelli",
+        "p3_team": "Mercedes",
+        "p4": "Charles Leclerc",
+        "p4_team": "Ferrari",
+        "p5": "Lewis Hamilton",
+        "p5_team": "Ferrari",
+        "fastest_lap": "Lando Norris (1:19.501)",
+        "strategy": "2-stop (Medium to Hard to Medium)",
+        "safety_cars": 0
     }
 ]
 
@@ -219,76 +327,191 @@ def build_corpus_documents() -> list:
             }
         })
 
-    # 2. Race Results Chunks with Rich Metadata
-    for r in COMPLETED_RACES_2026:
+    # 2. Race Results Chunks dynamically loaded from Paddock session ingestion
+    try:
+        from src.api.paddock import load_completed_race_results, compute_paddock_aggregates
+        completed_races_raw = load_completed_race_results(2026)
+    except Exception as e:
+        logger.warning(f"Failed loading live race results from paddock loader, fallback to static: {e}")
+        completed_races_raw = []
+
+    races_loaded_count = 0
+    latest_round = 0
+    latest_race_name = "Round 0"
+
+    for r_data in completed_races_raw:
+        round_no = r_data["round_number"]
+        event_name = r_data["event_name"]
+        results_df = r_data["results"]
+        latest_round = max(latest_round, round_no)
+        latest_race_name = event_name
+
+        top_finishers = []
+        winner_name = ""
+        winner_team = ""
+
+        if hasattr(results_df, "iterrows"):
+            for idx, row in results_df.iterrows():
+                try:
+                    pos = int(row.get("Position")) if pd.notna(row.get("Position")) else None
+                    if pos and pos <= 5:
+                        full_name = str(row.get("FullName", row.get("BroadcastName", row.get("Abbreviation", ""))))
+                        t_name = str(row.get("TeamName", ""))
+                        top_finishers.append((pos, full_name, t_name))
+                        if pos == 1:
+                            winner_name = full_name
+                            winner_team = t_name
+                except Exception:
+                    pass
+
+        top_finishers.sort(key=lambda x: x[0])
+        p1_str = f"{top_finishers[0][1]} ({top_finishers[0][2]})" if len(top_finishers) > 0 else "N/A"
+        p2_str = f"{top_finishers[1][1]} ({top_finishers[1][2]})" if len(top_finishers) > 1 else "N/A"
+        p3_str = f"{top_finishers[2][1]} ({top_finishers[2][2]})" if len(top_finishers) > 2 else "N/A"
+        p4_str = f"{top_finishers[3][1]} ({top_finishers[3][2]})" if len(top_finishers) > 3 else "N/A"
+        p5_str = f"{top_finishers[4][1]} ({top_finishers[4][2]})" if len(top_finishers) > 4 else "N/A"
+
         text = (
-            f"In Round {r['round']} of the 2026 Formula 1 season ({r['name']} at {r['circuit']}), "
-            f"{r['winner']} finished 1st (P1) for {r['winner_team']}. "
-            f"{r['p2']} finished 2nd (P2) for {r['p2_team']}, and {r['p3']} finished 3rd (P3) for {r['p3_team']}. "
-            f"{r['p4']} was 4th and {r['p5']} was 5th. "
-            f"Fastest lap of the race was set by {r['fastest_lap']}. "
-            f"The winning pit stop strategy was {r['strategy']} with {r['safety_cars']} safety car deployment(s)."
+            f"In Round {round_no} of the 2026 Formula 1 season ({event_name}), "
+            f"{p1_str} finished 1st (P1). "
+            f"{p2_str} finished 2nd (P2), and {p3_str} finished 3rd (P3). "
+            f"4th place was {p4_str} and 5th place was {p5_str}."
         )
+
+        all_drivers_str = ", ".join([f[1] for f in top_finishers])
+        all_teams_str = ", ".join(list(set([f[2] for f in top_finishers])))
+
         corpus.append({
-            "id": f"race_result_2026_r{r['round']}",
+            "id": f"race_result_2026_r{round_no}",
             "category": "race_results",
-            "title": f"2026 Round {r['round']} {r['name']} Result",
+            "title": f"2026 Round {round_no} {event_name} Result",
             "content": text,
-            "source": f"FastF1 Ingested Session Data - 2026 Round {r['round']}",
+            "source": f"FastF1 Ingested Session Data - 2026 Round {round_no}",
             "metadata": {
                 "category": "race_results",
                 "data_type": "race_results",
                 "season": 2026,
-                "race_name": r['name'],
-                "circuit_name": r['circuit'],
-                "round_number": r['round'],
-                "winner": r['winner'],
-                "winner_team": r['winner_team'],
-                "driver": r['winner'],
-                "team": r['winner_team'],
-                "drivers": f"{r['winner']}, {r['p2']}, {r['p3']}, {r['p4']}, {r['p5']}",
-                "teams": f"{r['winner_team']}, {r['p2_team']}, {r['p3_team']}, {r['p4_team']}, {r['p5_team']}"
+                "race_name": event_name,
+                "round_number": round_no,
+                "winner": winner_name,
+                "winner_team": winner_team,
+                "driver": winner_name,
+                "team": winner_team,
+                "drivers": all_drivers_str,
+                "teams": all_teams_str
             }
         })
+        races_loaded_count += 1
 
-    # 3. Championship Standings Chunks (As of Round 5)
+    # Fallback to static array if live load returned no races
+    if races_loaded_count == 0:
+        for r in COMPLETED_RACES_2026:
+            text = (
+                f"In Round {r['round']} of the 2026 Formula 1 season ({r['name']} at {r['circuit']}), "
+                f"{r['winner']} finished 1st (P1) for {r['winner_team']}. "
+                f"{r['p2']} finished 2nd (P2) for {r['p2_team']}, and {r['p3']} finished 3rd (P3) for {r['p3_team']}."
+            )
+            corpus.append({
+                "id": f"race_result_2026_r{r['round']}",
+                "category": "race_results",
+                "title": f"2026 Round {r['round']} {r['name']} Result",
+                "content": text,
+                "source": f"FastF1 Ingested Session Data - 2026 Round {r['round']}",
+                "metadata": {
+                    "category": "race_results",
+                    "data_type": "race_results",
+                    "season": 2026,
+                    "race_name": r['name'],
+                    "round_number": r['round'],
+                    "winner": r['winner'],
+                    "winner_team": r['winner_team'],
+                    "driver": r['winner'],
+                    "team": r['winner_team']
+                }
+            })
+            latest_round = max(latest_round, r['round'])
+            latest_race_name = r['name']
+
+    # 3. Championship Standings Chunks dynamically synchronized with Paddock module
+    try:
+        agg = compute_paddock_aggregates(2026)
+        d_standings = agg.get("drivers", [])
+        c_standings = agg.get("constructors", [])
+        actual_races_loaded = agg.get("races_loaded", latest_round)
+        if actual_races_loaded > 0:
+            latest_round = actual_races_loaded
+
+        # Top 5 drivers summary
+        d_summary_parts = []
+        for d in d_standings[:5]:
+            d_summary_parts.append(
+                f"{d['championship_position']}. {d['full_name']} ({d['team_name']}) with {int(d['points'])} points"
+            )
+        drivers_standings_text = (
+            f"As of Round {latest_round} of the 2026 Drivers' Championship: "
+            + ", ".join(d_summary_parts) + "."
+        )
+
+        # Top 4 constructors summary
+        c_summary_parts = []
+        for c in c_standings[:4]:
+            c_summary_parts.append(
+                f"{c['championship_position']}. {c['team_name']} with {int(c['points'])} points"
+            )
+        constructors_standings_text = (
+            f"As of Round {latest_round} of the 2026 Constructors' Championship: "
+            + ", ".join(c_summary_parts) + "."
+        )
+
+    except Exception as e:
+        logger.warning(f"Error computing standings for RAG index, using fallback: {e}")
+        drivers_standings_text = (
+            f"As of Round {latest_round} of the 2026 Drivers' Championship: "
+            "Kimi Antonelli leads the standings with 198 points, followed by George Russell in 2nd with 143 points."
+        )
+        constructors_standings_text = (
+            f"As of Round {latest_round} of the 2026 Constructors' Championship: "
+            "Mercedes leads with 341 points, followed by Ferrari."
+        )
+
     corpus.append({
-        "id": "standings_drivers_2026_r5",
+        "id": f"standings_drivers_2026_r{latest_round}",
         "category": "standings",
-        "title": "2026 Drivers Championship Standings (As of Round 5)",
-        "content": "As of Round 5 (Saudi Arabian GP) of the 2026 Drivers' Championship: Max Verstappen leads the standings with 110 points, followed by Charles Leclerc in 2nd with 98 points, Lando Norris in 3rd with 89 points, George Russell in 4th with 72 points, and Kimi Antonelli in 5th with 54 points.",
-        "source": "FastF1 Standings Ingestion Service",
+        "title": f"2026 Drivers Championship Standings (As of Round {latest_round})",
+        "content": drivers_standings_text,
+        "source": "FastF1 Paddock Dynamic Standings Aggregator",
         "metadata": {
             "category": "standings",
             "data_type": "standings",
             "season": 2026,
-            "race_name": "",
-            "round_number": 5,
-            "driver": "",
-            "team": "",
+            "race_name": latest_race_name,
+            "round_number": latest_round,
+            "driver": d_standings[0]["full_name"] if 'd_standings' in locals() and d_standings else "",
+            "team": d_standings[0]["team_name"] if 'd_standings' in locals() and d_standings else "",
             "type": "drivers_standings"
         }
     })
     
     corpus.append({
-        "id": "standings_constructors_2026_r5",
+        "id": f"standings_constructors_2026_r{latest_round}",
         "category": "standings",
-        "title": "2026 Constructors Championship Standings (As of Round 5)",
-        "content": "As of Round 5 (Saudi Arabian GP) of the 2026 Constructors' Championship: Red Bull Racing leads with 132 points, Ferrari is 2nd with 126 points, Mercedes is 3rd with 126 points, and McLaren is 4th with 118 points.",
-        "source": "FastF1 Standings Ingestion Service",
+        "title": f"2026 Constructors Championship Standings (As of Round {latest_round})",
+        "content": constructors_standings_text,
+        "source": "FastF1 Paddock Dynamic Standings Aggregator",
         "metadata": {
             "category": "standings",
             "data_type": "standings",
             "season": 2026,
-            "race_name": "",
-            "round_number": 5,
+            "race_name": latest_race_name,
+            "round_number": latest_round,
             "driver": "",
-            "team": "",
+            "team": c_standings[0]["team_name"] if 'c_standings' in locals() and c_standings else "",
             "type": "constructors_standings"
         }
     })
 
     return corpus
+
 
 def index_corpus():
     logger.info("Building structured RAG corpus documents...")
@@ -299,5 +522,46 @@ def index_corpus():
         
     logger.info(f"RAG corpus successfully indexed with {len(corpus)} documents at: {INDEX_FILE}")
 
+    # Index into ChromaDB persistent collection
+    try:
+        import chromadb
+        client = chromadb.PersistentClient(path=DB_DIR)
+        try:
+            client.delete_collection(name="f1_knowledge")
+        except Exception:
+            pass
+        collection = client.create_collection(name="f1_knowledge")
+
+        ids = [doc["id"] for doc in corpus]
+        documents = [f"{doc['title']}\n{doc['content']}" for doc in corpus]
+        metadatas = []
+        for doc in corpus:
+            meta = dict(doc.get("metadata", {}))
+            meta["title"] = doc.get("title", "")
+            meta["category"] = doc.get("category", "")
+            meta["source"] = doc.get("source", "")
+            # ChromaDB metadata values must be primitive types (str, int, float, bool)
+            clean_meta = {}
+            for k, v in meta.items():
+                if isinstance(v, (str, int, float, bool)):
+                    clean_meta[k] = v
+                else:
+                    clean_meta[k] = str(v)
+            metadatas.append(clean_meta)
+
+        collection.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+        logger.info(f"ChromaDB persistent collection 'f1_knowledge' successfully updated with {len(ids)} documents.")
+    except Exception as e:
+        logger.warning(f"ChromaDB indexing skipped or failed: {e}")
+
+def reindex_rag_corpus():
+    """Public helper for re-indexing RAG corpus on demand (e.g. after ingestion)."""
+    index_corpus()
+
 if __name__ == "__main__":
     index_corpus()
+

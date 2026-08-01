@@ -63,6 +63,9 @@ def get_schedule(year: int = 2026):
         logger.error(f"Error loading schedule for {year}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch schedule: {str(e)}")
 
+from src.pipeline.index_rag import reindex_rag_corpus
+from src.ml.rag_engine import rag_engine
+
 @router.get("/session/{year}/{round_no}/summary")
 def get_session_summary(year: int, round_no: int, session_type: str = "R"):
     """Returns normalized high-level summary, drivers, weather, and results for a race session."""
@@ -70,12 +73,21 @@ def get_session_summary(year: int, round_no: int, session_type: str = "R"):
         session, is_fallback = load_session_with_fallback(year, round_no, session_type)
     except SessionIdentityError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+    # Trigger RAG index refresh to prevent out-of-date vector store staleness
+    try:
+        reindex_rag_corpus()
+        rag_engine.reload_index()
+    except Exception as e:
+        logger.warning(f"RAG vector store auto-reindex failed during ingestion: {e}")
+
     summary = normalize_session_summary(session)
     summary["is_fallback_data"] = is_fallback
     summary["actual_round_number"] = int(session.event.get("RoundNumber", round_no))
     summary["actual_event_name"] = str(session.event.get("EventName", ""))
     summary["weather"] = normalize_weather(session)[:10]  # sample weather snapshots
     return summary
+
 
 @router.get("/session/{year}/{round_no}/laps")
 def get_session_laps(year: int, round_no: int, session_type: str = "R", driver: Optional[str] = None):
