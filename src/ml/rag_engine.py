@@ -103,13 +103,20 @@ UNSUPPORTED_ENTITIES = ["porsche", "speedracer", "bmw", "toyota", "ford", "audi"
 # ---------------------------------------------------------------------------
 # Classification keyword lists
 # ---------------------------------------------------------------------------
+STANDINGS_TRIGGERS = [
+    "standings", "championship standing", "championship standings",
+    "driver standings", "drivers standings", "constructor standings", "constructors standings",
+    "team standings", "teams standings", "championship leader", "who leads",
+    "who is leading", "who's leading", "points table", "points standing",
+    "points tally", "how many points", "how many pts", "current points",
+    "championship position", "what position", "where is", "leaderboard",
+]
+
 SEASON_FACTUAL_TRIGGERS = [
     "who won", "what happened at", "race result", "race at", "result of",
-    "fastest lap", "pit stop", "pit strategy", "who finished", "championship standings",
-    "championship leader", "who leads", "who is leading", "points table",
-    "points standing", "how many points", "who scored", "podium at",
-    "podium in", "qualifying at", "grid at", "who was on pole",
-    "what was the strategy", "safety car", "led the race",
+    "fastest lap", "pit stop", "pit strategy", "who finished",
+    "who scored", "podium at", "podium in", "qualifying at", "grid at",
+    "who was on pole", "what was the strategy", "safety car", "led the race",
 ]
 
 CONVERSATIONAL_KEYWORDS = [
@@ -124,6 +131,7 @@ PURE_GREETINGS = {"hi", "hello", "hey", "hiya", "howdy", "sup", "yo", "greetings
 # Query Classification
 # ---------------------------------------------------------------------------
 
+QUERY_CATEGORY_STANDINGS       = "STANDINGS"
 QUERY_CATEGORY_SEASON_FACTUAL  = "SEASON_FACTUAL"
 QUERY_CATEGORY_GENERAL_F1      = "GENERAL_F1"
 QUERY_CATEGORY_CONVERSATIONAL  = "CONVERSATIONAL"
@@ -131,8 +139,9 @@ QUERY_CATEGORY_CONVERSATIONAL  = "CONVERSATIONAL"
 
 def classify_query(query_text: str, entities: Dict[str, Any]) -> str:
     """
-    Classifies the user query into one of three categories before retrieval:
+    Classifies the user query into one of four categories before retrieval:
       CONVERSATIONAL  - greeting or capability question  -> bypass RAG
+      STANDINGS       - standings / points / leader      -> direct live paddock data lookup
       GENERAL_F1      - terminology/rules/history        -> search general corpus chunks only
       SEASON_FACTUAL  - specific race/season data        -> grounded metadata-filtered retrieval
     """
@@ -151,25 +160,35 @@ def classify_query(query_text: str, entities: Dict[str, Any]) -> str:
         if kw in q:
             return QUERY_CATEGORY_CONVERSATIONAL
 
-    # 3. Very short queries (1-2 words) with no race/driver entity -> conversational
+    # 3. Standings queries (single source of truth path)
+    # Check if query asks about overall standings/points/leaders
+    is_race_specific = bool(entities.get("race_name") or entities.get("round_number"))
+    if not is_race_specific:
+        for st_trigger in STANDINGS_TRIGGERS:
+            if st_trigger in q:
+                return QUERY_CATEGORY_STANDINGS
+        if ("points" in q or "pts" in q or "position" in q) and (entities.get("driver") or entities.get("team")):
+            return QUERY_CATEGORY_STANDINGS
+
+    # 4. Very short queries (1-2 words) with no race/driver entity -> conversational
     #    Note: 3-word queries like "What is DRS?" are knowledge questions, not conversational.
     if len(words) <= 2 and not entities.get("race_name") and not entities.get("driver"):
         return QUERY_CATEGORY_CONVERSATIONAL
 
-    # 4. Entity extraction already found a race or round -> season factual
+    # 5. Entity extraction already found a race or round -> season factual
     if entities.get("race_name") or entities.get("round_number"):
         return QUERY_CATEGORY_SEASON_FACTUAL
 
-    # 5. Trigger phrase match -> season factual
+    # 6. Trigger phrase match -> season factual
     for trigger in SEASON_FACTUAL_TRIGGERS:
         if trigger in q:
             return QUERY_CATEGORY_SEASON_FACTUAL
 
-    # 6. Driver or team without a race -> season factual (standings)
+    # 7. Driver or team without a race -> standings if asking factual status, or season factual
     if entities.get("driver") or entities.get("team"):
-        return QUERY_CATEGORY_SEASON_FACTUAL
+        return QUERY_CATEGORY_STANDINGS
 
-    # 7. Default -> general F1 knowledge
+    # 8. Default -> general F1 knowledge
     return QUERY_CATEGORY_GENERAL_F1
 
 
@@ -371,6 +390,8 @@ class F1RAGEngine:
         t_ret_start = time.perf_counter()
         if category == QUERY_CATEGORY_CONVERSATIONAL:
             res = self._handle_conversational_query(user_query)
+        elif category == QUERY_CATEGORY_STANDINGS:
+            res = self._handle_standings_query(user_query, entities, year=year)
         elif category == QUERY_CATEGORY_GENERAL_F1:
             res = self._handle_general_query(user_query)
         else:
@@ -384,6 +405,163 @@ class F1RAGEngine:
         logger.info(f"RAG Query processed: category=[{category}], total={total_ms}ms (class={class_ms}ms)")
         self._response_cache[q_key] = res
         return res
+
+    # ------------------------------------------------------------------
+    # Handler: STANDINGS (Single source of truth via Paddock API/engine)
+    # ------------------------------------------------------------------
+
+    def _handle_standings_query(self, user_query: str, entities: Dict[str, Any], year: int = 2026) -> Dict[str, Any]:
+        """
+        Direct lookup path for standings, points, and championship position queries.
+        Pulls directly from paddock module's live compute_paddock_aggregates function
+        so answers are byte-for-byte identical to Web Paddock standings endpoints.
+        """
+        from src.api.paddock import compute_paddock_aggregates
+
+        try:
+            aggregates = compute_paddock_aggregates(year)
+        except Exception as e:
+            logger.error(f"Failed fetching paddock aggregates for standings query: {e}")
+            aggregates = {"races_loaded": 0, "drivers": [], "constructors": []}
+
+        races_loaded = aggregates.get("races_loaded", 0)
+        drivers = aggregates.get("drivers", [])
+        constructors = aggregates.get("constructors", [])
+
+        if races_loaded == 0 or not drivers:
+            return {
+                "answer": f"No completed {year} race sessions are available yet in FastF1 to compute championship standings.",
+                "sources": ["FastF1 Paddock Standings Service (GET /standings/drivers)"],
+                "confidence": 0.95,
+                "is_grounded": True,
+                "unable_to_answer": True
+            }
+
+        q_lower = user_query.strip().lower()
+
+        def fmt_pts(val: float) -> str:
+            val_round = round(float(val), 2)
+            if val_round == int(val_round):
+                return str(int(val_round))
+            return str(val_round)
+
+        # 1. Driver-specific lookup
+        target_driver = entities.get("driver")
+        matched_driver = None
+        if target_driver:
+            target_lower = target_driver.lower()
+            for d in drivers:
+                if (d.get("full_name", "").lower() == target_lower or
+                    d.get("abbreviation", "").lower() == target_lower or
+                    target_lower in d.get("full_name", "").lower()):
+                    matched_driver = d
+                    break
+        if not matched_driver:
+            for d in drivers:
+                full_name = d.get("full_name", "").lower()
+                surname = full_name.split()[-1] if full_name else ""
+                abbr = d.get("abbreviation", "").lower()
+                if (abbr and f" {abbr} " in f" {q_lower} ") or (surname and len(surname) > 3 and surname in q_lower):
+                    matched_driver = d
+                    break
+
+        # 2. Team-specific lookup
+        target_team = entities.get("team")
+        matched_team = None
+        if target_team:
+            team_lower = target_team.lower()
+            for c in constructors:
+                if c.get("team_name", "").lower() == team_lower or team_lower in c.get("team_name", "").lower():
+                    matched_team = c
+                    break
+        if not matched_team:
+            for c in constructors:
+                c_name = c.get("team_name", "").lower()
+                if c_name and c_name in q_lower:
+                    matched_team = c
+                    break
+
+        # If user is asking specifically about a driver
+        if matched_driver and ("driver" in q_lower or "how many points" in q_lower or "points does" in q_lower or "position" in q_lower or "where is" in q_lower or "standings" in q_lower or not matched_team):
+            pos = matched_driver.get("championship_position", 1)
+            pts_str = fmt_pts(matched_driver.get("points", 0))
+            fn = matched_driver.get("full_name", "")
+            tn = matched_driver.get("team_name", "")
+            wins = matched_driver.get("wins", 0)
+            podiums = matched_driver.get("podiums", 0)
+
+            top_driver = drivers[0]
+            top_pts_str = fmt_pts(top_driver.get("points", 0))
+
+            if pos == 1:
+                ans = f"{fn} ({tn}) leads the {year} Drivers' Championship in P1 with {pts_str} points ({wins} wins, {podiums} podiums across {races_loaded} completed races)."
+            else:
+                ans = f"{fn} ({tn}) is currently P{pos} in the {year} Drivers' Championship with {pts_str} points ({wins} wins, {podiums} podiums across {races_loaded} completed races). Championship leader: {top_driver.get('full_name')} ({top_driver.get('team_name')}) with {top_pts_str} points."
+
+            return {
+                "answer": ans,
+                "sources": ["FastF1 Paddock Standings Service (GET /standings/drivers)"],
+                "confidence": 1.0,
+                "is_grounded": True,
+                "unable_to_answer": False
+            }
+
+        # If user is asking specifically about a team / constructor
+        if matched_team and ("team" in q_lower or "constructor" in q_lower or "how many points" in q_lower or "position" in q_lower or "where is" in q_lower or not matched_driver):
+            pos = matched_team.get("championship_position", 1)
+            pts_str = fmt_pts(matched_team.get("points", 0))
+            tn = matched_team.get("team_name", "")
+            wins = matched_team.get("wins", 0)
+
+            top_team = constructors[0]
+            top_pts_str = fmt_pts(top_team.get("points", 0))
+
+            if pos == 1:
+                ans = f"{tn} leads the {year} Constructors' Championship in P1 with {pts_str} points ({wins} wins across {races_loaded} completed races)."
+            else:
+                ans = f"{tn} is currently P{pos} in the {year} Constructors' Championship with {pts_str} points ({wins} wins across {races_loaded} completed races). Championship leader: {top_team.get('team_name')} with {top_pts_str} points."
+
+            return {
+                "answer": ans,
+                "sources": ["FastF1 Paddock Standings Service (GET /standings/constructors)"],
+                "confidence": 1.0,
+                "is_grounded": True,
+                "unable_to_answer": False
+            }
+
+        # If user asks specifically about Constructor / Team standings in general
+        if "constructor" in q_lower or "team" in q_lower or "manufacturers" in q_lower:
+            c_lines = []
+            for c in constructors:
+                c_lines.append(f"{c.get('championship_position')}. {c.get('team_name')} - {fmt_pts(c.get('points', 0))} pts ({c.get('wins', 0)} wins)")
+            ans = f"2026 Constructors' Championship Standings (As of Round {races_loaded}):\n" + "\n".join(c_lines)
+            return {
+                "answer": ans,
+                "sources": ["FastF1 Paddock Standings Service (GET /standings/constructors)"],
+                "confidence": 1.0,
+                "is_grounded": True,
+                "unable_to_answer": False
+            }
+
+        # General / Drivers' Standings summary
+        d_lines = []
+        for d in drivers:
+            d_lines.append(f"{d.get('championship_position')}. {d.get('full_name')} ({d.get('team_name')}) - {fmt_pts(d.get('points', 0))} pts ({d.get('wins', 0)} wins)")
+
+        top_d = drivers[0]
+        ans = (
+            f"2026 Drivers' Championship Standings (As of Round {races_loaded}):\n"
+            + "\n".join(d_lines[:10]) + "\n\n"
+            f"Championship Leader: {top_d.get('full_name')} ({top_d.get('team_name')}) with {fmt_pts(top_d.get('points', 0))} points."
+        )
+
+        return {
+            "answer": ans,
+            "sources": ["FastF1 Paddock Standings Service (GET /standings/drivers)"],
+            "confidence": 1.0,
+            "is_grounded": True,
+            "unable_to_answer": False
+        }
 
     # ------------------------------------------------------------------
     # Handler: CONVERSATIONAL

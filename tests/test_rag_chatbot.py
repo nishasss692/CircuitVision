@@ -91,22 +91,68 @@ def test_completed_race_r11_hungarian_gp():
     assert data["unable_to_answer"] is False
     assert "Norris" in data["answer"] or "Lando" in data["answer"]
 
-# --- STANDINGS & PADDOCK CROSS-CHECK TESTS ---
+# --- STANDINGS & PADDOCK CROSS-CHECK TESTS (SINGLE SOURCE OF TRUTH) ---
 
 def test_championship_standings_cross_check_with_paddock():
-    """Verifies chatbot standings answer matches the paddock module standings calculation."""
+    """Verifies chatbot standings answer matches the paddock module standings calculation byte-for-byte on points."""
     paddock_res = client.get("/api/paddock/standings/2026")
     assert paddock_res.status_code == 200
     paddock_data = paddock_res.json()
     assert len(paddock_data["drivers"]) > 0
-    top_driver = paddock_data["drivers"][0]["full_name"]
+    top_driver_info = paddock_data["drivers"][0]
+    top_driver_name = top_driver_info["full_name"]
+    top_driver_pts = top_driver_info["points"]
+    pts_str = str(int(top_driver_pts)) if top_driver_pts == int(top_driver_pts) else str(top_driver_pts)
     
     response = client.post("/chat", json={"query": "Who is leading the drivers championship?"})
     assert response.status_code == 200
     data = response.json()
     assert data["unable_to_answer"] is False
-    # Chatbot answer must reference the top driver computed by paddock module (Kimi Antonelli)
-    assert top_driver in data["answer"] or "Antonelli" in data["answer"]
+    assert top_driver_name in data["answer"] or "Antonelli" in data["answer"]
+    assert pts_str in data["answer"]
+
+def test_driver_specific_points_cross_check_with_paddock():
+    """Verifies chatbot query for a specific driver returns exact byte-for-byte paddock points."""
+    paddock_res = client.get("/api/paddock/standings/2026")
+    assert paddock_res.status_code == 200
+    paddock_data = paddock_res.json()
+    antonelli_info = next(d for d in paddock_data["drivers"] if "Antonelli" in d["full_name"])
+    expected_pts = str(int(antonelli_info["points"])) if antonelli_info["points"] == int(antonelli_info["points"]) else str(antonelli_info["points"])
+
+    response = client.post("/chat", json={"query": "How many points does Kimi Antonelli have?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert expected_pts in data["answer"]
+
+def test_constructor_standings_cross_check_with_paddock():
+    """Verifies chatbot constructor standings query matches paddock constructor standings byte-for-byte."""
+    paddock_res = client.get("/api/paddock/standings/2026")
+    assert paddock_res.status_code == 200
+    paddock_data = paddock_res.json()
+    top_team_info = paddock_data["constructors"][0]
+    top_team_name = top_team_info["team_name"]
+    expected_pts = str(int(top_team_info["points"])) if top_team_info["points"] == int(top_team_info["points"]) else str(top_team_info["points"])
+
+    response = client.post("/chat", json={"query": "Who is leading the constructors championship?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["unable_to_answer"] is False
+    assert top_team_name in data["answer"]
+    assert expected_pts in data["answer"]
+
+def test_lockstep_cache_invalidation_sync():
+    """Verifies clearing paddock cache leaves both paddock and chatbot reading the exact same source in lockstep."""
+    from src.api.paddock import clear_paddock_cache
+    clear_paddock_cache(2026)
+
+    paddock_res = client.get("/api/paddock/standings/2026")
+    assert paddock_res.status_code == 200
+    paddock_pts = str(int(paddock_res.json()["drivers"][0]["points"]))
+
+    chat_res = client.post("/chat", json={"query": "How many points does Antonelli have?"})
+    assert chat_res.status_code == 200
+    assert paddock_pts in chat_res.json()["answer"]
 
 # --- RETRIEVAL ACCURACY & UNHELD FUTURE RACE TESTS ---
 

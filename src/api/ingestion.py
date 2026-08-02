@@ -65,6 +65,7 @@ def get_schedule(year: int = 2026):
 
 from src.pipeline.index_rag import reindex_rag_corpus
 from src.ml.rag_engine import rag_engine
+from src.api.paddock import clear_paddock_cache
 
 @router.get("/session/{year}/{round_no}/summary")
 def get_session_summary(year: int, round_no: int, session_type: str = "R"):
@@ -74,8 +75,9 @@ def get_session_summary(year: int, round_no: int, session_type: str = "R"):
     except SessionIdentityError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
-    # Trigger RAG index refresh to prevent out-of-date vector store staleness
+    # Trigger paddock cache clear and RAG index refresh to prevent out-of-date vector store staleness
     try:
+        clear_paddock_cache(year)
         reindex_rag_corpus()
         rag_engine.reload_index()
     except Exception as e:

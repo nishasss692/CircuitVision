@@ -85,11 +85,31 @@ def load_completed_race_results(year: int = 2026) -> List[Dict[str, Any]]:
     return completed_races
 
 
-def compute_paddock_aggregates(year: int = 2026):
+def clear_paddock_cache(year: Optional[int] = None):
+    """Clears cached paddock aggregate files so live standings are recalculated on next access."""
+    try:
+        if year:
+            cache_file = os.path.join(PADDOCK_CACHE_DIR, f"{year}_paddock_aggregates_v2.json")
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
+        else:
+            if os.path.exists(PADDOCK_CACHE_DIR):
+                for f in os.listdir(PADDOCK_CACHE_DIR):
+                    if f.endswith("_paddock_aggregates_v2.json"):
+                        try:
+                            os.remove(os.path.join(PADDOCK_CACHE_DIR, f))
+                        except Exception:
+                            pass
+        logger.info(f"Paddock standings cache cleared for year={year or 'all'}.")
+    except Exception as e:
+        logger.warning(f"Error clearing paddock cache: {e}")
+
+
+def compute_paddock_aggregates(year: int = 2026, force_refresh: bool = False):
     """Computes driver stats, constructor stats, and standings from ingested race sessions, cached to disk."""
     # v2 suffix ensures old (potentially mismatched) cache files are not picked up
     cache_file = os.path.join(PADDOCK_CACHE_DIR, f"{year}_paddock_aggregates_v2.json")
-    if os.path.exists(cache_file):
+    if not force_refresh and os.path.exists(cache_file):
         try:
             with open(cache_file, "r") as f:
                 return json.load(f)
