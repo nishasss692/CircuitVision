@@ -290,9 +290,11 @@ def process_replay_and_leaderboard(year: int, round_no: int):
                             pit_windows.append((start_p, end_p))
                     driver_pit_windows[abbr] = pit_windows
 
-    # Sample time steps: cap step_stride to max 2 for 0.5s - 1.0s resolution animation
+    # Sample time steps: cap step_stride for smooth animation with fast load time
     step_stride = 1
-    if len(time_grid) > 4000:
+    if len(time_grid) > 2500:
+        step_stride = 3
+    elif len(time_grid) > 1000:
         step_stride = 2
 
     sampled_time_grid = time_grid[::step_stride]

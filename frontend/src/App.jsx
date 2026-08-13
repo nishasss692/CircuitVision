@@ -15,7 +15,7 @@ import PitwallScreen from './components/PitwallScreen';
 import WebPaddock from './components/WebPaddock';
 import RagChatbotView from './components/RagChatbotView';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8005';
 
 function App() {
   const [activeTab, setActiveTab] = useState('2D_REPLAY');

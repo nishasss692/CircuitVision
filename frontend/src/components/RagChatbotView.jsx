@@ -36,7 +36,7 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:8000/chat', {
+      const res = await axios.post('http://localhost:8005/chat', {
         query: userText,
         year,
         round_number: roundNumber

@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8005';
 
 export default function WebPaddock({ year = 2026 }) {
   const [activeTab, setActiveTab] = useState('DRIVERS'); // DRIVERS | TEAMS | STANDINGS | CALENDAR

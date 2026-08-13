@@ -15,7 +15,7 @@ import {
   Disc
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8005';
 
 const COMPOUND_STYLES = {
   SOFT: 'bg-red-500/20 text-red-400 border-red-500/40 shadow-red-500/10',
