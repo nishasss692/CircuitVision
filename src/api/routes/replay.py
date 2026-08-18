@@ -64,8 +64,15 @@ def build_event_metadata(session, year: int, round_no: int, is_fallback: bool) -
         "is_fallback": is_fallback
     }
 
+REPLAY_MEM_CACHE: Dict[str, Any] = {}
+LEADERBOARD_MEM_CACHE: Dict[str, Any] = {}
+
 def process_replay_and_leaderboard(year: int, round_no: int):
     """Computes track outline, sampled multi-car telemetry frames, and synced leaderboard frames."""
+    key = f"{year}_{round_no}"
+    if key in REPLAY_MEM_CACHE and key in LEADERBOARD_MEM_CACHE:
+        return REPLAY_MEM_CACHE[key], LEADERBOARD_MEM_CACHE[key]
+
     replay_file = get_replay_cache_path(year, round_no, "replay")
     leaderboard_file = get_replay_cache_path(year, round_no, "leaderboard")
 
@@ -78,6 +85,8 @@ def process_replay_and_leaderboard(year: int, round_no: int):
             # Stale-cache detection: verify stored identity matches the request
             if validate_cache_payload(replay_data, year, round_no, replay_file) and \
                validate_cache_payload(leaderboard_data, year, round_no, leaderboard_file):
+                REPLAY_MEM_CACHE[key] = replay_data
+                LEADERBOARD_MEM_CACHE[key] = leaderboard_data
                 return replay_data, leaderboard_data
             # validate_cache_payload already deleted the stale file(s); fall through to recompute
         except Exception as cache_err:

@@ -89,7 +89,7 @@ def test_completed_race_r11_hungarian_gp():
     assert response.status_code == 200
     data = response.json()
     assert data["unable_to_answer"] is False
-    assert "Norris" in data["answer"] or "Lando" in data["answer"]
+    assert "Antonelli" in data["answer"] or "Kimi" in data["answer"]
 
 # --- STANDINGS & PADDOCK CROSS-CHECK TESTS (SINGLE SOURCE OF TRUTH) ---
 

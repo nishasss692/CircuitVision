@@ -488,7 +488,7 @@
       "driver": "Kimi Antonelli",
       "team": "Mercedes",
       "drivers": "Kimi Antonelli, George Russell, Lewis Hamilton, Charles Leclerc, Oliver Bearman",
-      "teams": "Ferrari, Mercedes, Haas F1 Team"
+      "teams": "Haas F1 Team, Ferrari, Mercedes"
     }
   },
   {
@@ -548,7 +548,7 @@
       "driver": "Kimi Antonelli",
       "team": "Mercedes",
       "drivers": "Kimi Antonelli, Lewis Hamilton, Max Verstappen, Charles Leclerc, Isack Hadjar",
-      "teams": "Ferrari, Red Bull Racing, Mercedes"
+      "teams": "Red Bull Racing, Ferrari, Mercedes"
     }
   },
   {
@@ -568,7 +568,7 @@
       "driver": "Kimi Antonelli",
       "team": "Mercedes",
       "drivers": "Kimi Antonelli, Lewis Hamilton, Pierre Gasly, Isack Hadjar, Oscar Piastri",
-      "teams": "Red Bull Racing, Ferrari, Mercedes, Alpine, McLaren"
+      "teams": "Alpine, Ferrari, Mercedes, Red Bull Racing, McLaren"
     }
   },
   {
@@ -588,7 +588,7 @@
       "driver": "Lewis Hamilton",
       "team": "Ferrari",
       "drivers": "Lewis Hamilton, George Russell, Lando Norris, Max Verstappen, Oscar Piastri",
-      "teams": "Ferrari, Red Bull Racing, Mercedes, McLaren"
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren"
     }
   },
   {
@@ -608,7 +608,7 @@
       "driver": "George Russell",
       "team": "Mercedes",
       "drivers": "George Russell, Max Verstappen, Kimi Antonelli, Oscar Piastri, Lewis Hamilton",
-      "teams": "Red Bull Racing, Mercedes, Ferrari, McLaren"
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren"
     }
   },
   {
@@ -628,7 +628,7 @@
       "driver": "Charles Leclerc",
       "team": "Ferrari",
       "drivers": "Charles Leclerc, George Russell, Lewis Hamilton, Lando Norris, Isack Hadjar",
-      "teams": "Ferrari, Red Bull Racing, Mercedes, McLaren"
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren"
     }
   },
   {
@@ -648,7 +648,7 @@
       "driver": "Kimi Antonelli",
       "team": "Mercedes",
       "drivers": "Kimi Antonelli, Charles Leclerc, Max Verstappen, Lewis Hamilton, Oscar Piastri",
-      "teams": "Ferrari, Red Bull Racing, Mercedes, McLaren"
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren"
     }
   },
   {
@@ -668,14 +668,14 @@
       "driver": "Lando Norris",
       "team": "McLaren",
       "drivers": "Lando Norris, Max Verstappen, Kimi Antonelli, Charles Leclerc, Lewis Hamilton",
-      "teams": "Red Bull Racing, Ferrari, McLaren, Mercedes"
+      "teams": "Red Bull Racing, Ferrari, Mercedes, McLaren"
     }
   },
   {
     "id": "standings_drivers_2026_r11",
     "category": "standings",
     "title": "2026 Drivers Championship Standings (As of Round 11)",
-    "content": "As of Round 11 of the 2026 Drivers' Championship: 1. Kimi Antonelli (Mercedes) with 198 points, 2. Lewis Hamilton (Ferrari) with 151 points, 3. George Russell (Mercedes) with 134 points, 4. Charles Leclerc (Ferrari) with 117 points, 5. Lando Norris (McLaren) with 102 points.",
+    "content": "As of Round 11 of the 2026 Drivers' Championship: 1. Kimi Antonelli (Mercedes) with 219 points, 2. Lewis Hamilton (Ferrari) with 151 points, 3. George Russell (Mercedes) with 134 points, 4. Charles Leclerc (Ferrari) with 117 points, 5. Lando Norris (McLaren) with 102 points.",
     "source": "FastF1 Paddock Dynamic Standings Aggregator",
     "metadata": {
       "category": "standings",
@@ -692,7 +692,7 @@
     "id": "standings_constructors_2026_r11",
     "category": "standings",
     "title": "2026 Constructors Championship Standings (As of Round 11)",
-    "content": "As of Round 11 of the 2026 Constructors' Championship: 1. Mercedes with 332 points, 2. Ferrari with 268 points, 3. McLaren with 177 points, 4. Red Bull Racing with 168 points.",
+    "content": "As of Round 11 of the 2026 Constructors' Championship: 1. Mercedes with 353 points, 2. Ferrari with 268 points, 3. McLaren with 177 points, 4. Red Bull Racing with 168 points.",
     "source": "FastF1 Paddock Dynamic Standings Aggregator",
     "metadata": {
       "category": "standings",

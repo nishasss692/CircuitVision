@@ -1,38 +1,104 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏎️%3C/text%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>2026 Formula 1 Tactical Dashboard</title>
-    <!-- Google Fonts -->
+    <title>CircuitVision — Formula 1 Pitwall & Tactical Telemetry Command Center</title>
+    
+    <!-- Google Fonts: Sora, Inter, JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
       tailwind.config = {
+        darkMode: "class",
         theme: {
           extend: {
-            fontFamily: {
-              sans: ['Outfit', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-            },
             colors: {
-              f1red: '#e10600',
-              f1neon: '#ff1e18',
-              f1cyan: '#00f0ff',
-              f1gold: '#ffd700',
-              f1dark: '#0a0a0c',
-              f1panel: '#121216',
+              "racing-red": "#E10600",
+              "obsidian-base": "#080808",
+              "obsidian-surface": "#121212",
+              "surface": "#131319",
+              "surface-dim": "#131319",
+              "surface-bright": "#39383f",
+              "surface-container-lowest": "#0e0e14",
+              "surface-container-low": "#1b1b21",
+              "surface-container": "#1f1f25",
+              "surface-container-high": "#2a2930",
+              "surface-container-highest": "#35343b",
+              "pit-wall-border": "#201f28",
+              "aero-slate": "#949498",
+              "primary": "#ffb4a8",
+              "primary-container": "#E10600",
+              "inverse-primary": "#c00500",
+              "secondary": "#c7c5d1",
+              "secondary-container": "#494852",
+              "tertiary": "#b6c4ff",
+              "tertiary-container": "#2861fe",
+              "on-surface": "#e4e1ea",
+              "on-surface-variant": "#b4b5b5",
+              "pure-white": "#FFFFFF",
+              "outline": "#af8781",
+              "outline-variant": "#5e3f3a",
+              "caution-yellow": "#ffd700",
+              "fastest-lap": "#b138dd",
+              "error": "#ffb4ab",
+              "background": "#0e0e14"
+            },
+            borderRadius: {
+              "DEFAULT": "0.125rem",
+              "lg": "0.25rem",
+              "xl": "0.5rem",
+              "2xl": "0.75rem",
+              "full": "9999px"
+            },
+            spacing: {
+              "unit": "4px",
+              "xs": "4px",
+              "sm": "8px",
+              "md": "16px",
+              "lg": "24px",
+              "xl": "32px",
+              "gutter": "24px",
+              "margin-mobile": "16px",
+              "margin-desktop": "32px"
+            },
+            fontFamily: {
+              "display-lg": ["Sora", "sans-serif"],
+              "headline-lg": ["Sora", "sans-serif"],
+              "headline-md": ["Sora", "sans-serif"],
+              "label-caps": ["Sora", "sans-serif"],
+              "label-bold": ["Sora", "sans-serif"],
+              "body-base": ["Inter", "sans-serif"],
+              "body-bold": ["Inter", "sans-serif"],
+              "telemetry-mono": ["JetBrains Mono", "monospace"],
+              "data-mono": ["JetBrains Mono", "monospace"]
+            },
+            fontSize: {
+              "display-lg": ["56px", { lineHeight: "60px", letterSpacing: "-0.03em", fontWeight: "800" }],
+              "display-lg-mobile": ["36px", { lineHeight: "42px", letterSpacing: "-0.02em", fontWeight: "800" }],
+              "headline-lg": ["32px", { lineHeight: "38px", letterSpacing: "-0.015em", fontWeight: "700" }],
+              "headline-md": ["24px", { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "700" }],
+              "body-base": ["15px", { lineHeight: "24px", letterSpacing: "0", fontWeight: "400" }],
+              "body-bold": ["15px", { lineHeight: "24px", letterSpacing: "0", fontWeight: "600" }],
+              "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "700" }],
+              "label-bold": ["13px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+              "telemetry-mono": ["14px", { lineHeight: "18px", letterSpacing: "0.05em", fontWeight: "700" }],
+              "data-mono": ["13px", { lineHeight: "18px", letterSpacing: "0.02em", fontWeight: "600" }]
             }
           }
         }
       }
     </script>
   </head>
-  <body class="bg-[#0a0a0c] text-white min-h-screen font-sans selection:bg-red-600 selection:text-white">
+  <body class="bg-obsidian-base text-on-surface font-body-base antialiased selection:bg-racing-red selection:text-white min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -24,8 +24,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("f1_tactical_api")
 
 app = FastAPI(
-    title="2026 F1 Tactical Dashboard API",
-    description="Full-stack Formula 1 telemetry ingestion, 2D race replay, pitwall, paddock, RAG chatbot, and championship prediction engine",
+    title="CircuitVision API - Formula 1 Tactical & Telemetry Command Center",
+    description="Enterprise-grade Formula 1 tactical graph intelligence, 2D real-time race replay, pitwall live telemetry, paddock driver dossiers, grounded RAG strategist, and ML speed delta engine",
     version="1.0.0"
 )
 
@@ -86,7 +86,7 @@ if os.path.exists(MODEL_PATH):
 def health_check():
     return {
         "status": "Active",
-        "service": "2026 Formula 1 Tactical Dashboard API",
+        "service": "CircuitVision API - Formula 1 Tactical & Telemetry Command Center",
         "cache": "FastF1 local disk cache enabled",
         "modules": [
             "Ingestion Service",

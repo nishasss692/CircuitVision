@@ -251,17 +251,17 @@ COMPLETED_RACES_2026 = [
         "round": 11,
         "name": "Hungarian Grand Prix",
         "circuit": "Hungaroring",
-        "winner": "Lando Norris",
-        "winner_team": "McLaren",
+        "winner": "Kimi Antonelli",
+        "winner_team": "Mercedes",
         "p2": "Max Verstappen",
         "p2_team": "Red Bull Racing",
-        "p3": "Kimi Antonelli",
-        "p3_team": "Mercedes",
-        "p4": "Charles Leclerc",
+        "p3": "Charles Leclerc",
+        "p3_team": "Ferrari",
+        "p4": "Lewis Hamilton",
         "p4_team": "Ferrari",
-        "p5": "Lewis Hamilton",
-        "p5_team": "Ferrari",
-        "fastest_lap": "Lando Norris (1:19.501)",
+        "p5": "Isack Hadjar",
+        "p5_team": "RB",
+        "fastest_lap": "Kimi Antonelli (1:19.501)",
         "strategy": "2-stop (Medium to Hard to Medium)",
         "safety_cars": 0
     }
@@ -467,11 +467,11 @@ def build_corpus_documents() -> list:
         logger.warning(f"Error computing standings for RAG index, using fallback: {e}")
         drivers_standings_text = (
             f"As of Round {latest_round} of the 2026 Drivers' Championship: "
-            "Kimi Antonelli leads the standings with 198 points, followed by George Russell in 2nd with 143 points."
+            "Kimi Antonelli leads the standings with 219 points, followed by Lewis Hamilton in 2nd with 151 points."
         )
         constructors_standings_text = (
             f"As of Round {latest_round} of the 2026 Constructors' Championship: "
-            "Mercedes leads with 341 points, followed by Ferrari."
+            "Mercedes leads with 353 points, followed by Ferrari."
         )
 
     corpus.append({

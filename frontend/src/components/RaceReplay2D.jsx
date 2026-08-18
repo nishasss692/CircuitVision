@@ -34,7 +34,7 @@ export default function RaceReplay2D({
 
   // Replay Engine State
   const [isPlaying, setIsPlaying] = useState(true);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1); // 0.25x, 0.5x, 1x (Real-Time), 2x, 5x, 10x
+  const [playbackSpeed, setPlaybackSpeed] = useState(3); // Default to 3x speed for faster replay
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [hoveredCar, setHoveredCar] = useState(null);
@@ -60,12 +60,24 @@ export default function RaceReplay2D({
   const minTimeSec = timestamps[0] || 0;
   const maxTimeSec = timestamps[timestamps.length - 1] || 0;
 
-  // Reset playback when event changes
+  // Compute first motion timestamp so replay starts right as cars begin moving
+  const initialStartSec = useMemo(() => {
+    if (!replayData?.frames || !replayData?.timestamps) return minTimeSec;
+    const firstMotionFrame = replayData.frames.find((f) =>
+      f.cars?.some((c) => (c.speed || 0) > 2 || (c.throttle || 0) > 5)
+    );
+    if (firstMotionFrame && firstMotionFrame.timestamp !== undefined) {
+      return Math.max(minTimeSec, firstMotionFrame.timestamp - 0.5);
+    }
+    return minTimeSec;
+  }, [replayData, minTimeSec]);
+
+  // Reset playback when event changes & start when cars begin moving
   useEffect(() => {
-    setCurrentTimeSec(0);
+    setCurrentTimeSec(initialStartSec);
     setIsPlaying(true);
     trailHistoryRef.current = {};
-  }, [selectedEventId, replayData]);
+  }, [selectedEventId, replayData, initialStartSec]);
 
   // Compute bounding box for auto-scaling
   const bounds = useMemo(() => {
@@ -138,8 +150,8 @@ export default function RaceReplay2D({
       let hA = carA.heading || 0;
       let hB = carB.heading || 0;
       let diff = hB - hA;
-      if (diff > Math.PI) diff -= Math.PI * 2;
-      if (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
       const lheading = hA + diff * alpha;
 
       return {
@@ -147,45 +159,75 @@ export default function RaceReplay2D({
         x: lx,
         y: ly,
         speed: lspeed,
-        heading: lheading,
         throttle: lthrottle,
         brake: lbrake,
+        heading: lheading,
         gear: alpha > 0.5 ? carB.gear : carA.gear,
-        drs: alpha > 0.5 ? carB.drs : carA.drs
+        drs: alpha > 0.5 ? carB.drs : carA.drs,
+        in_pit: alpha > 0.5 ? carB.in_pit : carA.in_pit
       };
     });
 
     return {
-      cars: lerpedCars,
-      timestamp: currentTimeSec,
+      frame: { ...frameA, cars: lerpedCars },
+      alpha,
       frameIdx: idx
     };
-  }, [replayData, timestamps, currentTimeSec, totalFrames, minTimeSec, maxTimeSec]);
+  }, [currentTimeSec, replayData, totalFrames, timestamps, minTimeSec, maxTimeSec]);
 
-  // Current Leaderboard Frame synced to frameIdx
+  // Synchronized Leaderboard frame based on current timestamp
   const currentLeaderboardFrame = useMemo(() => {
-    if (!leaderboardData?.frames || !interpolatedFrame) return null;
-    const idx = Math.min(interpolatedFrame.frameIdx, leaderboardData.frames.length - 1);
-    return leaderboardData.frames[idx] || null;
-  }, [leaderboardData, interpolatedFrame]);
+    if (!leaderboardData?.frames || leaderboardData.frames.length === 0) return null;
+    const frames = leaderboardData.frames;
+    let low = 0;
+    let high = frames.length - 1;
+    let idx = 0;
 
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (frames[mid].timestamp <= currentTimeSec) {
+        idx = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return frames[idx] || frames[0];
+  }, [currentTimeSec, leaderboardData]);
+
+  // Previous leaderboard frame for overtake trend detection
   const prevLeaderboardFrame = useMemo(() => {
-    if (!leaderboardData?.frames || !interpolatedFrame || interpolatedFrame.frameIdx === 0) return null;
-    const idx = Math.max(0, interpolatedFrame.frameIdx - 1);
-    return leaderboardData.frames[idx] || null;
-  }, [leaderboardData, interpolatedFrame]);
+    if (!leaderboardData?.frames || leaderboardData.frames.length === 0) return null;
+    const targetTime = Math.max(minTimeSec, currentTimeSec - 2.5);
+    const frames = leaderboardData.frames;
+    let low = 0;
+    let high = frames.length - 1;
+    let idx = 0;
 
-  // Main 60 FPS RequestAnimationFrame Loop
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (frames[mid].timestamp <= targetTime) {
+        idx = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return frames[idx] || frames[0];
+  }, [currentTimeSec, leaderboardData, minTimeSec]);
+
+  // Main 60 FPS requestAnimationFrame Clock Loop
   useEffect(() => {
-    let animationId;
+    if (!isPlaying) {
+      lastTimeRef.current = null;
+      return;
+    }
 
-    const tick = (now) => {
-      if (lastTimeRef.current !== null && isPlaying && maxTimeSec > minTimeSec) {
-        const elapsedRealSec = (now - lastTimeRef.current) / 1000.0;
-        const deltaRaceSec = elapsedRealSec * playbackSpeed;
-
+    const step = (now) => {
+      if (lastTimeRef.current !== null) {
+        const deltaSec = (now - lastTimeRef.current) / 1000;
         setCurrentTimeSec((prev) => {
-          const next = prev + deltaRaceSec;
+          const next = prev + deltaSec * playbackSpeed;
           if (next >= maxTimeSec) {
             setIsPlaying(false);
             return maxTimeSec;
@@ -194,46 +236,26 @@ export default function RaceReplay2D({
         });
       }
       lastTimeRef.current = now;
-      if (isPlaying) {
-        animationId = requestAnimationFrame(tick);
-      }
+      animFrameRef.current = requestAnimationFrame(step);
     };
 
-    if (isPlaying) {
-      lastTimeRef.current = performance.now();
-      animationId = requestAnimationFrame(tick);
-    }
-
+    animFrameRef.current = requestAnimationFrame(step);
     return () => {
-      if (animationId) cancelAnimationFrame(animationId);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, playbackSpeed, maxTimeSec, minTimeSec]);
+  }, [isPlaying, playbackSpeed, maxTimeSec]);
 
-  // Native non-passive wheel listener for canvas zoom
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheelNative = (e) => {
-      e.preventDefault();
-      const zoomDelta = e.deltaY < 0 ? 0.2 : -0.2;
-      setZoomLevel((prev) => Math.min(5.0, Math.max(1.0, prev + zoomDelta)));
-    };
-
-    canvas.addEventListener('wheel', handleWheelNative, { passive: false });
-    return () => {
-      canvas.removeEventListener('wheel', handleWheelNative);
-    };
-  }, []);
-
-  // Render HTML5 2D Canvas with Motion Trails, 3-Sector Track, Car Orientation & Spills
+  // Canvas Rendering Pipeline (Hardware Accelerated 2D Vector)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
     const width = canvas.width;
     const height = canvas.height;
 
+    // Clear Canvas
     ctx.clearRect(0, 0, width, height);
 
     // Auto-scale mapping with padding + Zoom & Pan (perfectly centered!)
@@ -284,7 +306,7 @@ export default function RaceReplay2D({
 
       // Track Outer Glow Base
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+      ctx.strokeStyle = 'rgba(225, 6, 0, 0.15)';
       ctx.lineWidth = 22 * zoomLevel;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -298,7 +320,7 @@ export default function RaceReplay2D({
 
       // Track Tarmac Surface
       ctx.beginPath();
-      ctx.strokeStyle = '#111827'; // Dark slate tarmac
+      ctx.strokeStyle = '#121212';
       ctx.lineWidth = 14 * zoomLevel;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -434,18 +456,18 @@ export default function RaceReplay2D({
         if (isSelected) {
           ctx.beginPath();
           ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-          ctx.strokeStyle = '#00f0ff';
+          ctx.strokeStyle = '#E10600';
           ctx.lineWidth = 2.5;
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
         }
 
-        // Render 3-Letter Driver Code Badge (derived from driver last name, e.g. VER, HAM, LEC)
+        // Render 3-Letter Driver Code Badge using JetBrains Mono
         const driverCode = car.driver || meta.abbreviation || 'F1';
         const labelText = isInPit ? `${driverCode} • PIT` : driverCode;
 
-        ctx.font = isSelected ? 'bold 10.5px monospace' : 'bold 9px monospace';
+        ctx.font = isSelected ? 'bold 11px "JetBrains Mono", monospace' : 'bold 9.5px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -463,11 +485,11 @@ export default function RaceReplay2D({
           ctx.rect(pillX, pillY - pillH / 2, pillW, pillH);
         }
         ctx.fillStyle = isSelected
-          ? 'rgba(0, 240, 255, 0.35)'
-          : (isInPit ? 'rgba(245, 158, 11, 0.35)' : 'rgba(8, 12, 22, 0.85)');
+          ? 'rgba(225, 6, 0, 0.4)'
+          : (isInPit ? 'rgba(245, 158, 11, 0.35)' : 'rgba(8, 8, 8, 0.88)');
         ctx.fill();
         ctx.strokeStyle = isSelected
-          ? '#00f0ff'
+          ? '#E10600'
           : (isInPit ? '#f59e0b' : `${teamColor}99`);
         ctx.lineWidth = 0.8;
         ctx.stroke();
@@ -494,14 +516,12 @@ export default function RaceReplay2D({
         ctx.fill();
         ctx.restore();
 
-        // Car Body Marker Dot with Dual Contrast Border (Per-team & Light/Dark separation)
-        // Outer dark ring
+        // Car Body Marker Dot with Dual Contrast Border
         ctx.beginPath();
         ctx.arc(cx, cy, 7, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fill();
 
-        // Team color inner fill dot
         ctx.beginPath();
         ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
         ctx.fillStyle = teamColor;
@@ -510,7 +530,6 @@ export default function RaceReplay2D({
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Inner white/contrast border ring
         ctx.beginPath();
         ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
@@ -526,7 +545,7 @@ export default function RaceReplay2D({
 
   // Canvas Mouse Drag, Click, & Move Event Handlers
   const handleMouseDown = (e) => {
-    if (e.button === 0 || e.button === 1) { // Left or Middle mouse button
+    if (e.button === 0 || e.button === 1) {
       isDraggingRef.current = true;
       dragStartRef.current = {
         x: e.clientX - panOffset.x,
@@ -600,42 +619,41 @@ export default function RaceReplay2D({
   const currentLeaderLap = currentLeaderboardFrame?.leaderboard?.[0]?.current_lap || 1;
 
   return (
-    <div className="space-y-6 font-sans">
+    <main className="flex-grow pt-4 pb-20 px-4 md:px-8 max-w-[1440px] w-full mx-auto space-y-6">
       {/* Header Toolbar: Grand Prix Dropdown & Race Session Banner */}
-      <div className="glass-panel p-5 rounded-3xl border border-gray-800 shadow-2xl flex flex-wrap items-center justify-between gap-4 bg-gray-900/80 backdrop-blur-xl">
+      <div className="p-5 rounded-xl border border-surface-container-high shadow-2xl flex flex-wrap items-center justify-between gap-4 bg-surface-container relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-racing-red"></div>
+
         <div className="flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-red-600 to-red-500 text-white shadow-lg shadow-red-600/30">
-            <Flame size={24} />
+          <div className="p-3 rounded-lg bg-racing-red text-white shadow-lg shadow-racing-red/20">
+            <Activity size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-red-500 tracking-wider">
-                F1 2026 RACE SESSION REPLAY
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-telemetry-mono font-bold text-racing-red uppercase tracking-wider">
+                FastF1 2D Telemetry & Replay Engine
               </span>
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono font-bold">
-                60 FPS LERP ENGINE
+              <span className="text-[10px] px-2.5 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 font-telemetry-mono font-bold">
+                60 FPS LERP
               </span>
-              {replayData?.event?.is_fallback && (
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-bold">
-                  DEMO TELEMETRY
-                </span>
-              )}
             </div>
-            <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+            <h1 className="font-display-lg text-xl md:text-3xl text-pure-white font-extrabold uppercase tracking-tight flex items-center gap-2">
               {replayData?.event?.event_name || 'Grand Prix Race Replay'}
-            </h2>
+            </h1>
           </div>
         </div>
 
         {/* Grand Prix Dropdown & Session Time */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <label className="block text-[10px] font-mono text-gray-400 mb-1">SELECT GRAND PRIX</label>
+            <label className="block text-[10px] font-label-bold text-aero-slate mb-1 uppercase tracking-wider">
+              Select Grand Prix
+            </label>
             <div className="relative">
               <select
                 value={selectedEventId}
                 onChange={(e) => onSelectEvent(parseInt(e.target.value))}
-                className="appearance-none bg-gray-950 text-white text-sm font-mono font-bold py-2.5 pl-4 pr-10 rounded-xl border border-gray-700 hover:border-red-500 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer shadow-inner min-w-[240px]"
+                className="appearance-none bg-surface-container-lowest text-pure-white text-xs font-telemetry-mono font-bold py-2.5 pl-4 pr-10 rounded-lg border border-surface-container-high hover:border-racing-red transition-all focus:outline-none focus:ring-1 focus:ring-racing-red cursor-pointer shadow-inner min-w-[240px]"
               >
                 {eventsList.map((evt) => (
                   <option key={evt.round_number} value={evt.round_number}>
@@ -643,26 +661,26 @@ export default function RaceReplay2D({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-aero-slate pointer-events-none" size={16} />
             </div>
           </div>
 
-          <div className="hidden sm:flex flex-col items-end justify-center font-mono bg-gray-950 px-4 py-2 rounded-2xl border border-gray-800">
-            <span className="text-[10px] text-gray-400">SESSION ELAPSED TIME</span>
-            <span className="text-base font-bold text-cyan-400 flex items-center gap-1.5">
-              <Clock size={16} /> {formatTime(currentTimeSec)}
+          <div className="hidden sm:flex flex-col items-end justify-center font-telemetry-mono bg-surface-container-lowest px-4 py-2 rounded-lg border border-surface-container-high">
+            <span className="text-[10px] text-aero-slate font-label-bold uppercase">Session Elapsed</span>
+            <span className="text-sm font-bold text-racing-red flex items-center gap-1.5 font-data-mono">
+              <Clock size={14} /> {formatTime(currentTimeSec)}
             </span>
           </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="glass-panel p-20 rounded-3xl border border-gray-800 flex flex-col items-center justify-center space-y-4 bg-gray-900/50">
-          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400 font-mono text-sm">Resampling High-Accuracy FastF1 Telemetry & Cars Position Frames...</p>
+        <div className="p-20 rounded-xl border border-surface-container-high flex flex-col items-center justify-center space-y-4 bg-surface-container">
+          <div className="w-12 h-12 border-2 border-racing-red border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-aero-slate font-telemetry-mono text-xs">Loading High-Accuracy FastF1 Telemetry Frames...</p>
         </div>
       ) : error ? (
-        <div className="glass-panel p-12 rounded-3xl border border-red-800/50 bg-red-950/20 text-red-400 font-mono text-sm text-center">
+        <div className="p-12 rounded-xl border border-error/40 bg-amber-950/40 text-error font-telemetry-mono text-xs text-center">
           Failed loading race replay telemetry: {error}
         </div>
       ) : (
@@ -670,7 +688,7 @@ export default function RaceReplay2D({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: 2D Canvas Viewport & Controls */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="relative glass-panel rounded-3xl border border-cyan-500/30 overflow-hidden bg-gray-950 shadow-2xl p-2">
+            <div className="relative rounded-xl border border-surface-container-high overflow-hidden bg-obsidian-surface shadow-2xl p-2">
               <canvas
                 ref={canvasRef}
                 width={860}
@@ -686,19 +704,19 @@ export default function RaceReplay2D({
               {/* Hover Tooltip Card */}
               {hoveredCar && !selectedDriver && (
                 <div
-                  className="absolute pointer-events-none bg-gray-900/95 backdrop-blur-md p-3 rounded-2xl border border-cyan-500/50 font-mono text-xs text-white shadow-2xl space-y-1.5 z-20"
+                  className="absolute pointer-events-none bg-surface-container-lowest/95 backdrop-blur-md p-3 rounded-lg border border-racing-red/50 font-telemetry-mono text-xs text-pure-white shadow-2xl space-y-1.5 z-20"
                   style={{
                     left: `${Math.min(mousePos.x / 8.6, 72)}%`,
                     top: `${Math.max(mousePos.y / 5.2 - 18, 8)}%`
                   }}
                 >
-                  <div className="flex items-center justify-between gap-3 border-b border-gray-800 pb-1">
-                    <span className="font-black text-cyan-400 flex items-center gap-1">
+                  <div className="flex items-center justify-between gap-3 border-b border-surface-container-high pb-1">
+                    <span className="font-black text-racing-red flex items-center gap-1">
                       <Zap size={13} /> P{hoveredCar.position} • {hoveredCar.driver}
                     </span>
                     <div className="flex items-center gap-1.5">
                       {hoveredCar.in_pit && (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-bold">
                           PIT IN
                         </span>
                       )}
@@ -710,10 +728,10 @@ export default function RaceReplay2D({
                       </span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 text-[11px]">
-                    <span className="text-gray-400">Speed:</span>
-                    <span className="text-cyan-300 font-bold">{hoveredCar.speed} km/h</span>
-                    <span className="text-gray-400">Gear:</span>
+                  <div className="grid grid-cols-2 gap-x-3 text-[11px] font-data-mono">
+                    <span className="text-aero-slate">Speed:</span>
+                    <span className="text-pure-white font-bold">{hoveredCar.speed} km/h</span>
+                    <span className="text-aero-slate">Gear:</span>
                     <span className="text-amber-400 font-bold">{hoveredCar.gear ? `G${hoveredCar.gear}` : 'N/A'}</span>
                   </div>
                 </div>
@@ -721,34 +739,34 @@ export default function RaceReplay2D({
 
               {/* HUD Banner Overlay: Race Flag & Track Info */}
               <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 z-10">
-                <div className="bg-gray-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-800 font-mono text-xs text-gray-300 flex items-center gap-3">
-                  <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
-                    <MapPin size={14} /> {replayData?.event?.circuit || 'F1 Circuit'}
+                <div className="bg-surface-container-lowest/90 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-surface-container-high font-telemetry-mono text-xs text-on-surface flex items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-pure-white font-bold">
+                    <MapPin size={14} className="text-racing-red" /> {replayData?.event?.circuit || 'F1 Circuit'}
                   </span>
-                  <span className="text-gray-600">|</span>
-                  <span className="text-amber-400 font-bold">LAP {currentLeaderLap}</span>
+                  <span className="text-aero-slate">|</span>
+                  <span className="text-racing-red font-bold font-data-mono">LAP {currentLeaderLap}</span>
                 </div>
 
-                <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-xl font-mono text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+                <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg font-telemetry-mono text-xs text-emerald-400 font-bold flex items-center gap-1.5">
                   <Flag size={13} /> GREEN FLAG
                 </div>
               </div>
 
               {/* Interactive Zoom & Pan Controls Overlay */}
-              <div className="absolute top-4 right-4 flex items-center gap-1 bg-gray-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-gray-800 font-mono text-xs z-10 shadow-xl">
+              <div className="absolute top-4 right-4 flex items-center gap-1 bg-surface-container-lowest/90 backdrop-blur-md p-1.5 rounded-lg border border-surface-container-high font-telemetry-mono text-xs z-10 shadow-xl">
                 <button
                   onClick={() => setZoomLevel((prev) => Math.min(5.0, prev + 0.5))}
-                  className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-cyan-600 text-white font-bold transition-all flex items-center justify-center cursor-pointer"
+                  className="w-7 h-7 rounded bg-surface-container-high hover:bg-racing-red text-white font-bold transition-all flex items-center justify-center cursor-pointer"
                   title="Zoom In (+)"
                 >
                   +
                 </button>
-                <span className="px-2 font-bold text-cyan-400 text-[11px] min-w-[42px] text-center">
+                <span className="px-2 font-bold text-pure-white text-[11px] min-w-[42px] text-center font-data-mono">
                   {Math.round(zoomLevel * 100)}%
                 </span>
                 <button
                   onClick={() => setZoomLevel((prev) => Math.max(1.0, prev - 0.5))}
-                  className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-cyan-600 text-white font-bold transition-all flex items-center justify-center cursor-pointer"
+                  className="w-7 h-7 rounded bg-surface-container-high hover:bg-racing-red text-white font-bold transition-all flex items-center justify-center cursor-pointer"
                   title="Zoom Out (-)"
                 >
                   -
@@ -758,61 +776,61 @@ export default function RaceReplay2D({
                     setZoomLevel(1.0);
                     setPanOffset({ x: 0, y: 0 });
                   }}
-                  className="px-2.5 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-[10px] transition-all flex items-center justify-center cursor-pointer"
+                  className="px-2.5 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest text-aero-slate hover:text-white font-label-bold text-[10px] transition-all flex items-center justify-center cursor-pointer uppercase"
                   title="Reset View"
                 >
-                  RESET
+                  Reset
                 </button>
               </div>
 
               {/* Track Sector Color Legend Overlay */}
-              <div className="absolute bottom-4 left-4 bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-gray-800 font-mono text-[10px] text-gray-300 flex items-center gap-3">
+              <div className="absolute bottom-4 left-4 bg-surface-container-lowest/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-surface-container-high font-telemetry-mono text-[10px] text-aero-slate flex items-center gap-3">
                 <span style={{ color: '#00f0ff' }}>● SECTOR 1</span>
                 <span style={{ color: '#ff00ff' }}>● SECTOR 2</span>
                 <span style={{ color: '#ffd700' }}>● SECTOR 3</span>
-                <span style={{ color: '#00ff88' }}>⚡ DRS STRAITS</span>
+                <span style={{ color: '#00ff88' }}>⚡ DRS ZONES</span>
               </div>
             </div>
 
             {/* Replay Controls & Calibrated Scrubber Toolbar */}
-            <div className="glass-panel p-4 rounded-2xl border border-gray-800 bg-gray-950 flex flex-wrap items-center gap-3">
+            <div className="p-4 rounded-xl border border-surface-container-high bg-surface-container flex flex-wrap items-center gap-3 shadow-lg">
               {/* Play / Pause */}
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="p-3 rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg shadow-red-600/30 flex items-center justify-center cursor-pointer"
+                className="p-3 rounded-lg bg-racing-red hover:bg-inverse-primary text-white transition-all shadow-lg shadow-racing-red/20 flex items-center justify-center cursor-pointer"
                 title={isPlaying ? 'Pause Replay' : 'Play Replay'}
               >
-                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
               </button>
 
               {/* Rewind -5s */}
               <button
                 onClick={() => setCurrentTimeSec((prev) => Math.max(minTimeSec, prev - 5))}
-                className="p-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800 transition-all flex items-center justify-center cursor-pointer"
+                className="p-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-surface-container-highest transition-all flex items-center justify-center cursor-pointer"
                 title="Rewind 5 Seconds"
               >
-                <Rewind size={18} />
+                <Rewind size={16} />
               </button>
 
               {/* Fast Forward +5s */}
               <button
                 onClick={() => setCurrentTimeSec((prev) => Math.min(maxTimeSec, prev + 5))}
-                className="p-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800 transition-all flex items-center justify-center cursor-pointer"
+                className="p-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-surface-container-highest transition-all flex items-center justify-center cursor-pointer"
                 title="Forward 5 Seconds"
               >
-                <FastForward size={18} />
+                <FastForward size={16} />
               </button>
 
               {/* Restart */}
               <button
                 onClick={() => {
-                  setCurrentTimeSec(minTimeSec);
+                  setCurrentTimeSec(initialStartSec);
                   setIsPlaying(true);
                 }}
-                className="p-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800 transition-all flex items-center justify-center cursor-pointer"
+                className="p-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-surface-container-highest transition-all flex items-center justify-center cursor-pointer"
                 title="Restart Session Replay"
               >
-                <RotateCcw size={18} />
+                <RotateCcw size={16} />
               </button>
 
               {/* Timeline Scrub Slider */}
@@ -824,24 +842,24 @@ export default function RaceReplay2D({
                   step="0.1"
                   value={currentTimeSec}
                   onChange={(e) => setCurrentTimeSec(parseFloat(e.target.value))}
-                  className="w-full h-2.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  className="w-full h-2 bg-surface-container-low rounded-lg appearance-none cursor-pointer accent-racing-red"
                 />
               </div>
 
               {/* Calibrated Speed Selectors */}
-              <div className="flex items-center gap-1 bg-gray-900 p-1.5 rounded-xl border border-gray-800 font-mono text-xs">
-                <span className="text-[10px] text-gray-400 px-1 font-bold">SPEED:</span>
-                {[0.25, 0.5, 1, 2, 5, 10].map((speed) => (
+              <div className="flex items-center gap-1 bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container-high font-telemetry-mono text-xs">
+                <span className="text-[10px] text-aero-slate px-1 font-bold">SPEED:</span>
+                {[0.5, 1, 2, 3, 5, 10, 20].map((speed) => (
                   <button
                     key={speed}
                     onClick={() => setPlaybackSpeed(speed)}
-                    className={`px-2 py-1 font-bold text-[11px] rounded-lg transition-all ${
+                    className={`px-2 py-1 font-bold text-[11px] rounded transition-all cursor-pointer font-data-mono ${
                       playbackSpeed === speed
-                        ? 'bg-red-600 text-white shadow'
-                        : 'text-gray-400 hover:text-white'
+                        ? 'bg-racing-red text-white shadow'
+                        : 'text-aero-slate hover:text-white'
                     }`}
                   >
-                    {speed === 1 ? '1x (1:1)' : `${speed}x`}
+                    {speed === 1 ? '1x' : `${speed}x`}
                   </button>
                 ))}
               </div>
@@ -849,49 +867,49 @@ export default function RaceReplay2D({
 
             {/* Selected Driver Detailed Live Telemetry Inspection Card */}
             {activeSelectedCar && (
-              <div className="glass-panel p-4 rounded-2xl border border-cyan-500/40 bg-gray-900/90 text-white space-y-3 font-mono">
-                <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+              <div className="p-4 rounded-xl border border-racing-red/40 bg-surface-container text-white space-y-3 font-telemetry-mono shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-surface-container-high pb-2">
                   <div className="flex items-center gap-3">
                     <div
                       className="w-3.5 h-3.5 rounded-full"
-                      style={{ backgroundColor: activeSelectedCar.team_color || '#00f0ff' }}
+                      style={{ backgroundColor: activeSelectedCar.team_color || '#E10600' }}
                     ></div>
-                    <span className="font-black text-lg text-white">
+                    <span className="font-display-lg font-bold text-base text-pure-white uppercase">
                       P{activeSelectedCar.position} • {activeSelectedCar.driver} ({activeSelectedCar.team})
                     </span>
                   </div>
                   <button
                     onClick={() => setSelectedDriver(null)}
-                    className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-800 rounded-lg"
+                    className="text-xs text-aero-slate hover:text-white px-2 py-1 bg-surface-container-high rounded cursor-pointer uppercase font-label-bold"
                   >
-                    ✕ CLOSE INSPECTOR
+                    ✕ Close
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-data-mono">
                   {/* Speed Gauge Bar */}
-                  <div className="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1">
-                    <span className="text-[10px] text-gray-400 block">SPEEDOMETER</span>
-                    <span className="text-xl font-black text-cyan-400">{activeSelectedCar.speed} <span className="text-xs font-normal text-gray-400">km/h</span></span>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg border border-surface-container-high space-y-1">
+                    <span className="text-[10px] text-aero-slate font-label-bold uppercase block">Speedometer</span>
+                    <span className="text-lg font-black text-pure-white">{activeSelectedCar.speed} <span className="text-xs font-normal text-aero-slate">km/h</span></span>
+                    <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all"
+                        className="bg-racing-red h-full transition-all"
                         style={{ width: `${Math.min(100, (activeSelectedCar.speed / 350) * 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
                   {/* Gear & DRS */}
-                  <div className="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1">
-                    <span className="text-[10px] text-gray-400 block">GEAR / DRS STATUS</span>
+                  <div className="bg-surface-container-lowest p-3 rounded-lg border border-surface-container-high space-y-1">
+                    <span className="text-[10px] text-aero-slate font-label-bold uppercase block">Gear / DRS</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl font-black text-amber-400">GEAR {activeSelectedCar.gear || 'N/A'}</span>
+                      <span className="text-lg font-black text-caution-yellow">GEAR {activeSelectedCar.gear || 'N/A'}</span>
                       {activeSelectedCar.drs ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/40 animate-pulse">
-                          DRS ACTIVE
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/40 animate-pulse">
+                          DRS ON
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] text-gray-500 bg-gray-900 border border-gray-800">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] text-aero-slate bg-surface-container border border-surface-container-high">
                           DRS OFF
                         </span>
                       )}
@@ -899,10 +917,10 @@ export default function RaceReplay2D({
                   </div>
 
                   {/* Throttle % */}
-                  <div className="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1">
-                    <span className="text-[10px] text-gray-400 block">THROTTLE INPUT</span>
-                    <span className="text-xl font-black text-emerald-400">{activeSelectedCar.throttle}%</span>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg border border-surface-container-high space-y-1">
+                    <span className="text-[10px] text-aero-slate font-label-bold uppercase block">Throttle Input</span>
+                    <span className="text-lg font-black text-emerald-400">{activeSelectedCar.throttle}%</span>
+                    <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-emerald-500 h-full transition-all"
                         style={{ width: `${activeSelectedCar.throttle}%` }}
@@ -911,12 +929,12 @@ export default function RaceReplay2D({
                   </div>
 
                   {/* Brake % */}
-                  <div className="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1">
-                    <span className="text-[10px] text-gray-400 block">BRAKE INPUT</span>
-                    <span className="text-xl font-black text-red-400">{activeSelectedCar.brake}%</span>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg border border-surface-container-high space-y-1">
+                    <span className="text-[10px] text-aero-slate font-label-bold uppercase block">Brake Input</span>
+                    <span className="text-lg font-black text-racing-red">{activeSelectedCar.brake}%</span>
+                    <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-red-500 h-full transition-all"
+                        className="bg-racing-red h-full transition-all"
                         style={{ width: `${activeSelectedCar.brake}%` }}
                       ></div>
                     </div>
@@ -927,21 +945,23 @@ export default function RaceReplay2D({
           </div>
 
           {/* Right Column: Live Synced Leaderboard Panel */}
-          <div className="glass-panel p-5 rounded-3xl border border-gray-800 bg-gray-900/90 backdrop-blur-xl space-y-4 flex flex-col h-[580px] md:h-[620px]">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+          <div className="p-5 rounded-xl border border-surface-container-high bg-surface-container space-y-4 flex flex-col h-[580px] md:h-[620px] shadow-2xl relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-racing-red"></div>
+
+            <div className="flex items-center justify-between border-b border-surface-container-high pb-3">
               <div className="flex items-center gap-2">
-                <Trophy size={20} className="text-amber-400" />
-                <h3 className="text-base font-black text-white tracking-wider font-mono">
-                  LIVE LEADERBOARD
+                <Trophy size={18} className="text-racing-red" />
+                <h3 className="font-headline-md text-sm md:text-base font-extrabold text-pure-white uppercase tracking-tight">
+                  Live Running Order
                 </h3>
               </div>
-              <span className="px-2.5 py-1 rounded-lg bg-gray-950 border border-gray-800 text-xs font-mono text-cyan-400 font-bold">
+              <span className="px-2.5 py-1 rounded bg-surface-container-lowest border border-surface-container-high text-xs font-telemetry-mono text-tertiary font-bold">
                 LAP {currentLeaderLap}
               </span>
             </div>
 
             {/* Running Order Drivers List */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin">
               {currentLeaderboardFrame?.leaderboard ? (
                 currentLeaderboardFrame.leaderboard.map((item) => {
                   const delta = positionDeltas[item.driver] || 0;
@@ -954,25 +974,25 @@ export default function RaceReplay2D({
                     <div
                       key={item.driver}
                       onClick={() => setSelectedDriver(isSelected ? null : item.driver)}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-2.5 rounded-lg border transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-cyan-500/20 border-cyan-500 shadow-lg shadow-cyan-500/20'
+                          ? 'bg-racing-red/20 border-racing-red shadow-lg shadow-racing-red/10'
                           : isP1
-                          ? 'bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500/30 hover:border-amber-500'
-                          : 'bg-gray-950/60 border-gray-800/80 hover:border-gray-700'
+                          ? 'bg-surface-container-highest/40 border-racing-red/30 hover:border-racing-red'
+                          : 'bg-surface-container-lowest/60 border-surface-container-high/60 hover:border-surface-container-highest'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         {/* Position Badge */}
                         <div
-                          className={`w-6 h-6 rounded-lg font-mono font-black text-xs flex items-center justify-center ${
+                          className={`w-6 h-6 rounded font-telemetry-mono font-black text-xs flex items-center justify-center ${
                             isP1
-                              ? 'bg-amber-400 text-black shadow-md shadow-amber-400/30'
+                              ? 'bg-racing-red text-white shadow-md shadow-racing-red/30'
                               : isP2
-                              ? 'bg-gray-300 text-black'
+                              ? 'bg-surface-container-highest text-white'
                               : isP3
-                              ? 'bg-amber-700 text-white'
-                              : 'bg-gray-800 text-gray-400'
+                              ? 'bg-surface-container-high text-tertiary'
+                              : 'bg-surface-container text-aero-slate'
                           }`}
                         >
                           {item.position}
@@ -980,45 +1000,45 @@ export default function RaceReplay2D({
 
                         {/* Team Color Pill */}
                         <div
-                          className="w-1.5 h-6 rounded-full"
-                          style={{ backgroundColor: item.team_color || '#333' }}
+                          className="w-1.5 h-6 rounded-sm shrink-0"
+                          style={{ backgroundColor: item.team_color || '#E10600' }}
                         ></div>
 
                         {/* Driver & Team Info */}
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-black text-sm text-white tracking-wide">
+                            <span className="font-display-lg font-bold text-xs text-pure-white uppercase tracking-tight">
                               {item.driver}
                             </span>
                             {/* Overtake Indicator */}
                             {delta > 0 && (
-                              <span className="flex items-center text-[10px] font-mono font-bold text-green-400 bg-green-950/60 px-1.5 rounded border border-green-500/30 animate-pulse">
+                              <span className="flex items-center text-[10px] font-telemetry-mono font-bold text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">
                                 <TrendingUp size={10} className="mr-0.5" /> +{delta}
                               </span>
                             )}
                             {delta < 0 && (
-                              <span className="flex items-center text-[10px] font-mono font-bold text-red-400 bg-red-950/60 px-1.5 rounded border border-red-500/30">
+                              <span className="flex items-center text-[10px] font-telemetry-mono font-bold text-error bg-amber-950/60 px-1 rounded border border-error/30">
                                 <TrendingDown size={10} className="mr-0.5" /> {delta}
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] font-mono text-gray-500 block truncate max-w-[100px]">
+                          <span className="text-[10px] font-body-base text-aero-slate block truncate max-w-[100px]">
                             {item.team}
                           </span>
                         </div>
                       </div>
 
                       {/* Gap to Leader & Speed telemetry */}
-                      <div className="text-right font-mono">
+                      <div className="text-right font-telemetry-mono font-data-mono">
                         <span
                           className={`text-xs font-bold block ${
-                            isP1 ? 'text-amber-400' : 'text-gray-300'
+                            isP1 ? 'text-racing-red' : 'text-pure-white'
                           }`}
                         >
                           {item.gap_to_leader}
                         </span>
                         {item.speed && (
-                          <span className="text-[10px] text-cyan-400 font-semibold block">
+                          <span className="text-[10px] text-aero-slate font-semibold block">
                             {item.speed} km/h
                           </span>
                         )}
@@ -1027,7 +1047,7 @@ export default function RaceReplay2D({
                   );
                 })
               ) : (
-                <div className="text-center text-gray-500 font-mono text-xs py-10">
+                <div className="text-center text-aero-slate font-telemetry-mono text-xs py-10">
                   No leaderboard data available for this frame
                 </div>
               )}
@@ -1035,6 +1055,6 @@ export default function RaceReplay2D({
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -1,31 +1,29 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Bot, Send, Sparkles, BookOpen, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
+import { Bot, Send, Sparkles, BookOpen, AlertTriangle, HelpCircle, User, Cpu } from 'lucide-react';
 
 export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
   const [messages, setMessages] = useState([
     {
       sender: 'bot',
-      text: 'Hello! I am your 2026 F1 Pitwall AI Assistant powered by LangChain, ChromaDB, and Gemini. Ask me anything about race results, standings, active aerodynamics regulations, or F1 terminology.',
+      text: 'Welcome to the CircuitVision AI Intelligence Assistant. I am connected to the FastF1 telemetry engine, ChromaDB regulation database, and 2026 technical specifications. Ask me anything about race results, championship standings, active aerodynamic rules, tire degradation, or track analysis.',
       sources: ['FastF1 Telemetry Engine', 'ChromaDB F1 Vector Store', '2026 FIA Technical Regulations'],
       unable_to_answer: false
     }
   ]);
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lastWasGrounded, setLastWasGrounded] = useState(true);
 
   const suggestedQueries = [
     "Who won the Australian GP?",
     "Who leads the championship?",
-    "What is DRS?",
-    "What is an undercut?",
-    "Hi, what can you do?",
-    "What is Parc Ferme?",
+    "What is active aerodynamics in 2026?",
+    "What is an undercut strategy?",
+    "Explain tire degradation factors",
+    "What is Parc Fermé?",
     "Who won the 2026 Hungarian GP?"
   ];
-
-  // Track whether last response was grounded (for loading message)
-  const [lastWasGrounded, setLastWasGrounded] = useState(true);
 
   const sendQuery = async (queryText) => {
     if (!queryText.trim() || loading) return;
@@ -75,38 +73,43 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
   };
 
   return (
-    <div className="glass-panel rounded-2xl border border-gray-800 shadow-2xl flex flex-col h-[650px] overflow-hidden bg-gray-950/80">
+    <div className="bg-surface-container border border-surface-container-high rounded-xl shadow-2xl flex flex-col h-[720px] overflow-hidden">
       {/* Header */}
-      <div className="p-4 bg-gray-950/90 border-b border-gray-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-            <Bot size={24} />
+      <div className="p-5 bg-surface-container-lowest border-b border-surface-container-high flex items-center justify-between">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-racing-red/10 border border-racing-red/30 flex items-center justify-center text-racing-red shadow-sm">
+            <Cpu size={20} />
           </div>
           <div>
-            <h3 className="text-md font-bold text-white tracking-wider flex items-center gap-2 font-mono">
-              F1 RAG PITWALL AI ASSISTANT
-              <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
-                LANGCHAIN + CHROMADB + GEMINI
+            <h3 className="font-display-lg text-base md:text-lg text-pure-white font-extrabold tracking-tight uppercase flex items-center gap-2">
+              <span>CircuitVision AI Strategist</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-racing-red/10 text-racing-red border border-racing-red/30 font-label-bold uppercase tracking-wider">
+                FastF1 + RAG
               </span>
             </h3>
-            <p className="text-xs text-gray-400 font-mono">
-              Grounded F1 2026 Season Data & Regulation Knowledge Retrieval
+            <p className="font-body-base text-xs text-aero-slate mt-0.5">
+              Grounded 2026 telemetry data, Grand Prix results, and FIA technical regulations.
             </p>
           </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high border border-surface-container-highest text-xs font-telemetry-mono">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-f1-pulse"></span>
+          <span className="text-tertiary text-[11px] uppercase tracking-wider font-bold">CHROMADB READY</span>
         </div>
       </div>
 
       {/* Suggested Query Pills */}
-      <div className="p-3 bg-gray-900/60 border-b border-gray-800/80 flex items-center gap-2 overflow-x-auto text-[11px] font-mono">
-        <span className="text-gray-400 shrink-0 font-bold flex items-center gap-1">
-          <HelpCircle size={13} className="text-cyan-400" /> Suggested:
+      <div className="px-4 py-3 bg-surface-container-low border-b border-surface-container-high flex items-center gap-2 overflow-x-auto text-xs">
+        <span className="text-aero-slate shrink-0 font-label-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+          <HelpCircle size={13} className="text-racing-red" /> Suggested:
         </span>
         {suggestedQueries.map((sq, i) => (
           <button
             key={i}
             onClick={() => sendQuery(sq)}
             disabled={loading}
-            className="px-3 py-1 rounded-full bg-gray-950 hover:bg-cyan-950 hover:text-cyan-300 text-gray-300 border border-gray-800 hover:border-cyan-500/40 transition-all shrink-0 cursor-pointer disabled:opacity-50"
+            className="px-3 py-1.5 rounded-full bg-surface-container-lowest hover:bg-surface-container-highest text-tertiary hover:text-pure-white border border-surface-container-high hover:border-racing-red/40 transition-all shrink-0 cursor-pointer disabled:opacity-50 font-body-base text-xs"
           >
             {sq}
           </button>
@@ -114,61 +117,80 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
       </div>
 
       {/* Messages List */}
-      <div className="flex-1 p-6 overflow-y-auto space-y-4 font-mono text-xs">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+      <div className="flex-1 p-5 md:p-6 overflow-y-auto space-y-4 font-body-base text-sm">
+        {messages.map((msg, idx) => {
+          const isUser = msg.sender === 'user';
+          return (
             <div
-              className={`max-w-[80%] p-4 rounded-2xl border ${
-                msg.sender === 'user'
-                  ? 'bg-red-600/90 text-white border-red-500/50 rounded-br-none shadow-lg shadow-red-600/20'
-                  : msg.unable_to_answer
-                  ? 'bg-amber-950/40 text-amber-200 border-amber-600/40 rounded-bl-none shadow-lg'
-                  : 'bg-gray-900/90 text-gray-100 border-cyan-500/30 rounded-bl-none shadow-lg'
-              }`}
+              key={idx}
+              className={`flex items-start gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
-              {/* Badge for Unable to Answer */}
-              {msg.unable_to_answer && (
-                <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-[10px]">
-                  <AlertTriangle size={12} />
-                  <span>DATA UNCONTAINED / UNABLE TO ANSWER</span>
+              {!isUser && (
+                <div className="w-8 h-8 rounded-lg bg-racing-red/10 border border-racing-red/30 flex items-center justify-center text-racing-red shrink-0 mt-1">
+                  <Bot size={16} />
                 </div>
               )}
 
-              <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-
-              {/* Source attribution & confidence badge */}
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-gray-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-cyan-400">
-                  <div className="flex items-center gap-1.5">
-                    <BookOpen size={12} />
-                    <span className="font-bold">SOURCES:</span>
-                    {msg.sources.map((src, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded bg-gray-950 border border-gray-800 text-gray-300">
-                        {src}
-                      </span>
-                    ))}
+              <div
+                className={`max-w-[85%] md:max-w-[75%] p-4 rounded-xl border ${
+                  isUser
+                    ? 'bg-racing-red text-white border-racing-red/40 rounded-tr-none shadow-lg shadow-racing-red/20 font-medium'
+                    : msg.unable_to_answer
+                    ? 'bg-surface-container-high text-amber-200 border-amber-600/40 rounded-tl-none shadow-lg'
+                    : 'bg-surface-container-lowest text-on-surface border-surface-container-high rounded-tl-none shadow-md'
+                }`}
+              >
+                {/* Badge for Unable to Answer */}
+                {msg.unable_to_answer && (
+                  <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-label-bold text-[10px] uppercase tracking-wider">
+                    <AlertTriangle size={12} />
+                    <span>Out of Vector Scope / Uncontained</span>
                   </div>
+                )}
 
-                  {msg.confidence !== undefined && (
-                    <span className="text-gray-400">
-                      Confidence: <strong className="text-emerald-400">{(msg.confidence * 100).toFixed(0)}%</strong>
-                    </span>
-                  )}
+                <p className="leading-relaxed whitespace-pre-wrap font-body-base text-sm">{msg.text}</p>
+
+                {/* Source attribution & confidence badge */}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-surface-container-high flex flex-wrap items-center justify-between gap-2 text-[11px] font-telemetry-mono text-tertiary">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <BookOpen size={12} className="text-racing-red" />
+                      <span className="font-bold text-aero-slate">SOURCES:</span>
+                      {msg.sources.map((src, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded bg-surface-container-high border border-surface-container-highest text-tertiary">
+                          {src}
+                        </span>
+                      ))}
+                    </div>
+
+                    {msg.confidence !== undefined && (
+                      <span className="text-aero-slate">
+                        Confidence: <strong className="text-emerald-400">{(msg.confidence * 100).toFixed(0)}%</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {isUser && (
+                <div className="w-8 h-8 rounded-lg bg-surface-container-high border border-surface-container-highest flex items-center justify-center text-pure-white shrink-0 mt-1">
+                  <User size={16} />
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
+
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-900/90 text-cyan-400 p-4 rounded-2xl border border-cyan-500/30 font-mono text-xs flex items-center gap-2">
-              <Sparkles size={16} className="animate-spin" />
+          <div className="flex items-start gap-3 justify-start">
+            <div className="w-8 h-8 rounded-lg bg-racing-red/10 border border-racing-red/30 flex items-center justify-center text-racing-red shrink-0 mt-1">
+              <Bot size={16} />
+            </div>
+            <div className="bg-surface-container-lowest text-tertiary p-4 rounded-xl border border-surface-container-high font-telemetry-mono text-xs flex items-center gap-2.5">
+              <Sparkles size={16} className="animate-spin text-racing-red" />
               <span>
                 {lastWasGrounded
-                  ? 'SEARCHING CHROMADB VECTOR STORE & GROUNDING RESPONSE...'
+                  ? 'SEARCHING CHROMADB VECTOR STORE & SYNTHESIZING TELEMETRY...'
                   : 'THINKING...'}
               </span>
             </div>
@@ -177,24 +199,23 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSend} className="p-4 bg-gray-950/90 border-t border-gray-800 flex items-center gap-3">
+      <form onSubmit={handleSend} className="p-4 bg-surface-container-lowest border-t border-surface-container-high flex items-center gap-3">
         <input
           type="text"
           value={inputQuery}
           onChange={(e) => setInputQuery(e.target.value)}
-          placeholder="Ask about 2026 race results, standings, active aero rules, or F1 glossary..."
-          className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-xs font-mono text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/60"
+          placeholder="Ask about 2026 race results, standings, telemetry, active aero rules, or F1 glossary..."
+          className="flex-1 bg-surface-container border border-surface-container-high rounded-lg px-4 py-3 text-sm font-body-base text-white placeholder-aero-slate focus:outline-none focus:border-racing-red transition-colors"
         />
         <button
           type="submit"
           disabled={loading || !inputQuery.trim()}
-          className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs transition-all shadow-lg shadow-cyan-600/30 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+          className="px-5 py-3 rounded-lg bg-racing-red hover:bg-inverse-primary text-white font-label-bold text-xs uppercase tracking-wider transition-all border-t border-white/20 shadow-md shadow-racing-red/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
         >
           <Send size={14} />
-          <span>QUERY</span>
+          <span>Ask</span>
         </button>
       </form>
     </div>
   );
 }
-
