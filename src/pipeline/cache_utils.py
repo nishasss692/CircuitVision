@@ -25,9 +25,46 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 from typing import Any, Dict, Optional
 
+import fastf1
+
 logger = logging.getLogger("f1_cache_utils")
+
+# ---------------------------------------------------------------------------
+# Resilient directory & cache bootstrapping (Vercel serverless / read-only safe)
+# ---------------------------------------------------------------------------
+
+def ensure_cache_dir(relative_path: str = "f1_cache") -> str:
+    """
+    Safely resolves or creates a writable cache directory.
+    Falls back to tempfile.gettempdir() (/tmp) on read-only serverless filesystems.
+    """
+    target = os.path.join(os.getcwd(), relative_path)
+    try:
+        os.makedirs(target, exist_ok=True)
+        test_path = os.path.join(target, ".__write_test")
+        with open(test_path, "w") as f:
+            f.write("1")
+        os.remove(test_path)
+        return target
+    except Exception:
+        fallback = os.path.join(tempfile.gettempdir(), relative_path)
+        try:
+            os.makedirs(fallback, exist_ok=True)
+        except Exception:
+            pass
+        return fallback
+
+
+def init_fastf1_cache() -> None:
+    """Initializes FastF1 disk cache safely without failing on read-only environments."""
+    try:
+        cache_dir = ensure_cache_dir("f1_cache")
+        fastf1.Cache.enable_cache(cache_dir)
+    except Exception as exc:
+        logger.warning(f"FastF1 cache initialization warning: {exc}")
 
 
 # ---------------------------------------------------------------------------

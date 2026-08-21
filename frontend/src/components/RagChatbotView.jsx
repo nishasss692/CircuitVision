@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Bot, Send, Sparkles, BookOpen, AlertTriangle, HelpCircle, User, Cpu } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
   const [messages, setMessages] = useState([
@@ -34,7 +35,7 @@ export default function RagChatbotView({ year = 2026, roundNumber = 1 }) {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:8005/chat', {
+      const res = await axios.post(`${API_BASE_URL}/chat`, {
         query: userText,
         year,
         round_number: roundNumber

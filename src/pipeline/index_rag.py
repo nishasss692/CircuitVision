@@ -9,7 +9,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("index_rag")
 
 DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_f1_db"))
-os.makedirs(DB_DIR, exist_ok=True)
+try:
+    os.makedirs(DB_DIR, exist_ok=True)
+except Exception:
+    pass
 INDEX_FILE = os.path.join(DB_DIR, "rag_corpus.json")
 
 # Static reference & rules documents

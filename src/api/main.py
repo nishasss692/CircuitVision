@@ -7,11 +7,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-try:
-    from neo4j import GraphDatabase
-except ImportError:
-    GraphDatabase = None
-
 from src.api.ingestion import router as ingestion_router
 from src.api.paddock import router as paddock_router
 from src.api.predictor import router as predictor_router
@@ -46,27 +41,9 @@ app.include_router(chatbot_router)
 app.include_router(replay_router)
 app.include_router(pitwall_router)
 
-# Enable FastF1 disk cache
-CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR, exist_ok=True)
-fastf1.Cache.enable_cache(CACHE_DIR)
-
-# Dynamically fetch Neo4j URI (defaults to localhost for local runs)
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_AUTH = tuple(os.getenv("NEO4J_AUTH", "neo4j/DeployFest2026!").split("/"))
-
-driver = None
-if GraphDatabase is not None:
-    try:
-        driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
-    except Exception as e:
-        logger.warning(f"Neo4j driver initialization note: {e}")
-
-@app.on_event("shutdown")
-def shutdown_event():
-    if driver:
-        driver.close()
+# Enable FastF1 disk cache (safe on serverless)
+from src.pipeline.cache_utils import init_fastf1_cache
+init_fastf1_cache()
 
 class PredictionRequest(BaseModel):
     zone_name: str
@@ -74,13 +51,20 @@ class PredictionRequest(BaseModel):
     speed_start: float
     model_type: str = "RandomForest"
 
-MODEL_PATH = "src/ml/models/speed_delta_model.joblib"
-model_data = None
+# Robust model path resolution (handles both local and /var/task serverless)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODEL_PATH = os.path.join(BASE_DIR, "src", "ml", "models", "speed_delta_model.joblib")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = "src/ml/models/speed_delta_model.joblib"
 
+model_data = None
 if os.path.exists(MODEL_PATH):
-    model_data = joblib.load(MODEL_PATH)
-    model = model_data['model']
-    feature_columns = model_data['features']
+    try:
+        model_data = joblib.load(MODEL_PATH)
+        model = model_data['model']
+        feature_columns = model_data['features']
+    except Exception as exc:
+        logger.warning(f"Speed delta model loading note: {exc}")
 
 @app.get("/")
 def health_check():

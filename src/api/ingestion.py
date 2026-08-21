@@ -13,15 +13,14 @@ from src.pipeline.normalizer import (
 )
 from src.pipeline.session_loader import load_session, SessionIdentityError
 
+from src.pipeline.cache_utils import init_fastf1_cache
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("f1_ingestion")
 
-# Enable FastF1 disk cache in 'f1_cache' directory
-CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR, exist_ok=True)
-fastf1.Cache.enable_cache(CACHE_DIR)
+# Enable FastF1 disk cache (serverless safe)
+init_fastf1_cache()
 
 router = APIRouter(prefix="/api", tags=["Ingestion Service"])
 

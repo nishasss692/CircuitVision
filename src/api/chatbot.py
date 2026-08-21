@@ -25,6 +25,7 @@ import asyncio
 from fastapi.responses import StreamingResponse
 
 @router.post("/chat")
+@router.post("/api/chat")
 def chat_endpoint(req: ChatRequest):
     """
     Main RAG Chatbot endpoint taking query (+ optional history) and returning grounded context answers.
@@ -51,6 +52,7 @@ def chat_endpoint(req: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat/stream")
+@router.post("/api/chat/stream")
 def chat_stream_endpoint(req: ChatRequest):
     """
     Streaming endpoint returning SSE tokens for low perceived latency on frontend.

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trophy, AlertTriangle, RefreshCw } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8005';
+import { API_BASE_URL } from '../config';
 
 export default function PitsideStandings({ year = 2026, onSelectDriver }) {
   const [driversStandings, setDriversStandings] = useState([]);

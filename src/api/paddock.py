@@ -11,13 +11,10 @@ from src.pipeline.session_loader import load_session, SessionIdentityError
 logger = logging.getLogger("f1_paddock")
 router = APIRouter(tags=["Web Paddock Module"])
 
-CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR, exist_ok=True)
-fastf1.Cache.enable_cache(CACHE_DIR)
+from src.pipeline.cache_utils import ensure_cache_dir, init_fastf1_cache
+init_fastf1_cache()
 
-PADDOCK_CACHE_DIR = os.path.join(os.getcwd(), "data", "paddock_cache")
-os.makedirs(PADDOCK_CACHE_DIR, exist_ok=True)
+PADDOCK_CACHE_DIR = ensure_cache_dir(os.path.join("data", "paddock_cache"))
 
 # In-Memory caches for microsecond response times
 CALENDAR_MEMORY_CACHE: Dict[int, Any] = {}

@@ -8,13 +8,16 @@ __pycache__/
 f1_cache/
 data/neo4j/
 data/*_cache/
+data/chroma_f1_db/*/
+data/chroma_f1_db/*.bin
 *.sqlite
 *.sqlite3
 *.db
-
+*.ff1pkl
 
 # Environment & local config
 .env
+.env.*
 venv/
 .venv/
 env/
@@ -32,3 +35,5 @@ frontend/dist/
 frontend/.vite/
 frontend/build/
 .npm
+*.log
+

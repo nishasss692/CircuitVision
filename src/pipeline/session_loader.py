@@ -28,13 +28,8 @@ import fastf1
 
 logger = logging.getLogger("f1_session_loader")
 
-# ---------------------------------------------------------------------------
-# Cache bootstrap (idempotent — safe to call multiple times)
-# ---------------------------------------------------------------------------
-
-CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
-os.makedirs(CACHE_DIR, exist_ok=True)
-fastf1.Cache.enable_cache(CACHE_DIR)
+from src.pipeline.cache_utils import init_fastf1_cache
+init_fastf1_cache()
 
 
 # ---------------------------------------------------------------------------

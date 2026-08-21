@@ -8,7 +8,7 @@ import PitsideDrivers from './components/PitsideDrivers';
 import RaceReplay2D from './components/RaceReplay2D';
 import RagChatbotView from './components/RagChatbotView';
 
-const API_BASE_URL = 'http://localhost:8005';
+import { API_BASE_URL } from './config';
 
 function App() {
   const [activeTab, setActiveTab] = useState('SCHEDULE');

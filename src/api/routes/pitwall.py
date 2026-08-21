@@ -7,18 +7,15 @@ import numpy as np
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 from src.pipeline.session_loader import load_session, SessionIdentityError
-from src.pipeline.cache_utils import make_cache_path, validate_cache_payload
+from src.pipeline.cache_utils import make_cache_path, validate_cache_payload, ensure_cache_dir, init_fastf1_cache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("f1_pitwall")
 
-CACHE_DIR = os.path.join(os.getcwd(), "f1_cache")
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR, exist_ok=True)
-fastf1.Cache.enable_cache(CACHE_DIR)
+# Enable FastF1 disk cache (serverless safe)
+init_fastf1_cache()
 
-PITWALL_CACHE_DIR = os.path.join(os.getcwd(), "data", "pitwall_cache")
-os.makedirs(PITWALL_CACHE_DIR, exist_ok=True)
+PITWALL_CACHE_DIR = ensure_cache_dir(os.path.join("data", "pitwall_cache"))
 
 router = APIRouter(tags=["Pitwall Module"])
 

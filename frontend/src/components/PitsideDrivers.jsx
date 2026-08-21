@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw, User } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8005';
+import { API_BASE_URL } from '../config';
 
 // Maintained OpenF1 / Formula 1 CDN driver headshots (3col-retina High Definition)
 const OPENF1_DRIVER_HEADSHOTS = {
