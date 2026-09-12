@@ -3,8 +3,10 @@ import joblib
 import logging
 import fastf1
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.api.ingestion import router as ingestion_router
@@ -45,6 +47,17 @@ app.include_router(pitwall_router)
 from src.pipeline.cache_utils import init_fastf1_cache
 init_fastf1_cache()
 
+# Mount frontend static assets if available (works seamlessly on Vercel & local)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DIST_DIR = os.path.join(BASE_DIR, "frontend", "dist")
+if not os.path.exists(DIST_DIR):
+    DIST_DIR = os.path.join(BASE_DIR, "dist")
+ASSETS_DIR = os.path.join(DIST_DIR, "assets")
+INDEX_HTML_PATH = os.path.join(DIST_DIR, "index.html")
+
+if os.path.exists(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
 class PredictionRequest(BaseModel):
     zone_name: str
     time_start: float
@@ -52,7 +65,6 @@ class PredictionRequest(BaseModel):
     model_type: str = "RandomForest"
 
 # Robust model path resolution (handles both local and /var/task serverless)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MODEL_PATH = os.path.join(BASE_DIR, "src", "ml", "models", "speed_delta_model.joblib")
 if not os.path.exists(MODEL_PATH):
     MODEL_PATH = "src/ml/models/speed_delta_model.joblib"
@@ -66,11 +78,7 @@ if os.path.exists(MODEL_PATH):
     except Exception as exc:
         logger.warning(f"Speed delta model loading note: {exc}")
 
-@app.get("/")
-@app.get("/api")
-@app.get("/api/")
-@app.get("/api/index.py")
-def health_check():
+def get_health_data():
     return {
         "status": "Active",
         "service": "CircuitVision API - Formula 1 Tactical & Telemetry Command Center",
@@ -84,6 +92,33 @@ def health_check():
             "Championship Predictor"
         ]
     }
+
+@app.get("/")
+def root_endpoint(request: Request):
+    accept = request.headers.get("accept", "")
+    if os.path.exists(INDEX_HTML_PATH) and ("text/html" in accept or "application/json" not in accept):
+        return FileResponse(INDEX_HTML_PATH, media_type="text/html")
+    return get_health_data()
+
+@app.get("/index.html")
+def serve_index_html():
+    if os.path.exists(INDEX_HTML_PATH):
+        return FileResponse(INDEX_HTML_PATH, media_type="text/html")
+    return get_health_data()
+
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index.py")
+def health_check():
+    return get_health_data()
+
+@app.get("/replay")
+@app.get("/schedule")
+@app.get("/chatbot")
+def serve_spa_views():
+    if os.path.exists(INDEX_HTML_PATH):
+        return FileResponse(INDEX_HTML_PATH, media_type="text/html")
+    return get_health_data()
 
 @app.post("/predict")
 @app.post("/api/predict")
