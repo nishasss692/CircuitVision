@@ -1,9 +1,5 @@
 # CircuitVision 🏎️💨
 
-<p align="center">
-  <img src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/K/ANDANT01_Kimi_Antonelli/andant01.png.transform/3col-retina/image.png" alt="CircuitVision" width="120" style="border-radius: 50%; box-shadow: 0 0 20px rgba(225, 6, 0, 0.4);" />
-</p>
-
 <h3 align="center">Formula 1 Tactical Intelligence, 2D Telemetry Replay & AI Paddock Strategist</h3>
 
 <p align="center">
