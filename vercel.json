@@ -3,6 +3,10 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
+      "source": "/api",
+      "destination": "/api/index.py"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
     },
@@ -15,6 +19,42 @@
       "destination": "/api/index.py"
     },
     {
+      "source": "/calendar",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/standings",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/standings/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/drivers",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/drivers/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/teams",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/predictions/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/session/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/schedule/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
       "source": "/chat",
       "destination": "/api/index.py"
     },
@@ -24,6 +64,14 @@
     },
     {
       "source": "/predict",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/docs",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/openapi.json",
       "destination": "/api/index.py"
     },
     {

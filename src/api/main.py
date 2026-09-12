@@ -67,6 +67,9 @@ if os.path.exists(MODEL_PATH):
         logger.warning(f"Speed delta model loading note: {exc}")
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index.py")
 def health_check():
     return {
         "status": "Active",
@@ -83,6 +86,7 @@ def health_check():
     }
 
 @app.post("/predict")
+@app.post("/api/predict")
 def predict_speed(request: PredictionRequest):
     delta = 12.4
     if model_data:
